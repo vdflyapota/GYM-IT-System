@@ -1,5 +1,33 @@
 # GYM IT System: Project Schedule & Task Distribution
 
+## Quick Start
+
+### Prerequisites
+- Python 3.8+
+- Node.js 16+ and npm
+
+### Run the Project
+
+**Terminal 1 - Backend:**
+```bash
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Access:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+---
+
 ## Team Members & Core Responsibilities
 | Student | Core Domain (Vertical Slice) | Architectural Responsibility |
 | :--- | :--- | :--- |
