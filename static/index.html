@@ -20,6 +20,16 @@
         }
         .feature-icon { font-size: 3rem; color: #198754; margin-bottom: 15px; }
         .brand-color { color: #198754; font-weight: bold; }
+        
+        /* Phase 4: UX Polish - Alignment and spacing */
+        .gap-3 { gap: 1rem !important; }
+        .hero-section .container { padding: 2rem; }
+        
+        @media (max-width: 768px) {
+            .hero-section { height: auto; min-height: 60vh; padding: 2rem 0; }
+            .display-3 { font-size: 2rem; }
+            .lead { font-size: 1rem; }
+        }
     </style>
 </head>
 <body>
@@ -48,8 +58,19 @@
         <div class="container">
             <h1 class="display-3 fw-bold">Welcome to HealthGYM</h1>
             <p class="lead fs-4 mb-4">Track your progress, join tournaments, and dominate the leaderboard.</p>
-            <a href="register.html" class="btn btn-success btn-lg px-5">Start Your Journey</a>
-            <a href="login.html" class="btn btn-outline-light btn-lg px-5 ms-2">Member Login</a>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="register.html" class="btn btn-success btn-lg px-5">Start Your Journey</a>
+                <a href="login.html" class="btn btn-outline-light btn-lg px-5">Member Login</a>
+            </div>
+            <!-- Phase 4: Quick access - Max 2 clicks to key features -->
+            <div class="mt-4">
+                <a href="leaderboard.html" class="btn btn-outline-light btn-sm me-2">
+                    <i class="fas fa-chart-line me-2"></i>View Leaderboard
+                </a>
+                <a href="tournaments.html" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-trophy me-2"></i>Tournaments
+                </a>
+            </div>
         </div>
     </header>
 

@@ -2,57 +2,331 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Leaderboard | HealthGYM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="design-system.css">
+    <script src="performance-optimizations.js" defer></script>
+    <style>
+        body { 
+            background-color: var(--color-gray-100);
+            font-family: var(--font-family-primary);
+        }
+        .leaderboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: var(--spacing-xl);
+        }
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-xl);
+            gap: var(--spacing-lg);
+        }
+        .leaderboard-title {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--color-gray-900);
+            margin-bottom: var(--spacing-xs);
+        }
+        .leaderboard-subtitle {
+            color: var(--color-gray-600);
+            font-size: var(--font-size-sm);
+        }
+        .last-updated {
+            color: var(--color-gray-500);
+            font-size: var(--font-size-xs);
+        }
+        .refresh-btn {
+            white-space: nowrap;
+        }
+        .leaderboard-table-container {
+            background: var(--color-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard-table thead {
+            background: var(--color-dark);
+            color: var(--color-white);
+        }
+        .leaderboard-table th {
+            padding: var(--spacing-lg);
+            text-align: left;
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .leaderboard-table tbody tr {
+            border-bottom: 1px solid var(--color-gray-200);
+            transition: background-color var(--transition-fast);
+        }
+        .leaderboard-table tbody tr:hover {
+            background-color: var(--color-gray-50);
+        }
+        .leaderboard-table tbody tr.rank-gold {
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, transparent 100%);
+        }
+        .leaderboard-table tbody tr.rank-silver {
+            background: linear-gradient(90deg, rgba(192, 192, 192, 0.1) 0%, transparent 100%);
+        }
+        .leaderboard-table tbody tr.rank-bronze {
+            background: linear-gradient(90deg, rgba(205, 127, 50, 0.1) 0%, transparent 100%);
+        }
+        .leaderboard-table td {
+            padding: var(--spacing-lg);
+            font-size: var(--font-size-base);
+        }
+        .rank-cell {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-weight: 700;
+            color: var(--color-gray-700);
+        }
+        .rank-badge {
+            font-size: var(--font-size-xl);
+        }
+        .score-value {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: var(--spacing-md);
+            color: var(--color-gray-600);
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--color-gray-200);
+            border-top-color: var(--color-primary);
+            border-radius: var(--radius-full);
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .alert {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        /* Phase 4: UX Polish - Alignment fixes */
+        .leaderboard-header {
+            align-items: center;
+        }
+        
+        .gap-2 {
+            gap: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .leaderboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .d-flex.gap-2 {
+                width: 100%;
+                flex-direction: column;
+            }
+            .d-flex.gap-2 .btn {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>🥇 Live Leaderboard</h2>
-        <a href="dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+<div class="leaderboard-container">
+    <div class="leaderboard-header">
+        <div>
+            <h1 class="leaderboard-title">🥇 Live Leaderboard</h1>
+            <p class="leaderboard-subtitle">
+                Real-time rankings based on challenge scores
+                <span class="last-updated" id="lastUpdated"></span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="dashboard.html" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <button class="btn btn-primary refresh-btn" id="refreshBtn" onclick="loadLeaderboard()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
     </div>
 
-    <table class="table table-hover table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Rank</th>
-                <th>Athlete Name</th>
-                <th>Total Score</th>
-            </tr>
-        </thead>
-        <tbody id="leaderboardBody">
+    <div id="errorAlert" class="alert alert-error" style="display: none;"></div>
+
+    <div class="leaderboard-table-container">
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Athlete Name</th>
+                    <th>Total Score</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr>
+                    <td colspan="3" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading leaderboard...</p>
+                    </td>
+                </tr>
             </tbody>
-    </table>
+        </table>
+    </div>
 </div>
 
 <script>
+    let refreshInterval;
+    let isLoading = false;
+
     async function loadLeaderboard() {
-        // Fetch from Yeldana's API
-        const response = await fetch('/challenges/leaderboard');
-        const data = await response.json();
+        if (isLoading) return;
         
+        isLoading = true;
+        const refreshBtn = document.getElementById('refreshBtn');
+        const errorAlert = document.getElementById('errorAlert');
         const tbody = document.getElementById('leaderboardBody');
-        tbody.innerHTML = '';
+        const lastUpdated = document.getElementById('lastUpdated');
+        
+        // Show loading state
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        errorAlert.style.display = 'none';
 
-        data.forEach((entry, index) => {
-            let badge = '';
-            if(index === 0) badge = '🥇';
-            if(index === 1) badge = '🥈';
-            if(index === 2) badge = '🥉';
+        try {
+            // Fetch from optimized API (Phase 2 - Yeldana)
+            const startTime = performance.now();
+            const response = await fetch('/challenges/leaderboard');
+            const loadTime = performance.now() - startTime;
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Performance check: ensure < 2s latency
+            if (loadTime > 2000) {
+                console.warn(`Leaderboard load time: ${loadTime.toFixed(2)}ms (target: < 2000ms)`);
+            }
+            
+            tbody.innerHTML = '';
 
-            tbody.innerHTML += `
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 3rem; color: var(--color-gray-500);">
+                            No scores yet. Be the first to compete!
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach((entry, index) => {
+                    const rank = index + 1;
+                    let badge = '';
+                    let rankClass = '';
+                    
+                    if (rank === 1) {
+                        badge = '🥇';
+                        rankClass = 'rank-gold';
+                    } else if (rank === 2) {
+                        badge = '🥈';
+                        rankClass = 'rank-silver';
+                    } else if (rank === 3) {
+                        badge = '🥉';
+                        rankClass = 'rank-bronze';
+                    }
+
+                    const row = document.createElement('tr');
+                    if (rankClass) row.className = rankClass;
+                    
+                    row.innerHTML = `
+                        <td class="rank-cell">
+                            <span>${rank}</span>
+                            ${badge ? `<span class="rank-badge">${badge}</span>` : ''}
+                        </td>
+                        <td><strong>${entry.user_name || 'Unknown'}</strong></td>
+                        <td class="score-value">${(entry.total_score || 0).toFixed(1)} pts</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+            
+            // Update last updated time
+            const now = new Date();
+            lastUpdated.textContent = ` • Last updated: ${now.toLocaleTimeString()}`;
+            
+        } catch (error) {
+            console.error('Leaderboard fetch error:', error);
+            errorAlert.textContent = 'Failed to load leaderboard. Please try again.';
+            errorAlert.style.display = 'block';
+            tbody.innerHTML = `
                 <tr>
-                    <td>${index + 1} ${badge}</td>
-                    <td>${entry.user_name}</td>
-                    <td><strong>${entry.total_score} pts</strong></td>
+                    <td colspan="3" style="text-align: center; padding: 2rem; color: var(--color-danger);">
+                        Error loading leaderboard. Please refresh.
+                    </td>
                 </tr>
             `;
-        });
+        } finally {
+            isLoading = false;
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        }
     }
 
-    // Load immediately
+    // Load immediately on page load
     loadLeaderboard();
+
+    // Auto-refresh every 5 seconds for live updates (Phase 2 requirement)
+    refreshInterval = setInterval(loadLeaderboard, 5000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    });
+
+    // Performance: Lazy load images if any are added later
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                    observer.unobserve(img);
+                }
+            });
+        });
+
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
 </script>
 </body>
 </html>
