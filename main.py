@@ -18,17 +18,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- 1. Register API Routers (Backend Logic) ---
-# These MUST come before the static mount so the API takes priority
+# --- 1. Register API Routers ---
+# These must run FIRST so the API is not blocked by static files
 app.include_router(auth.router)
 app.include_router(tournaments.router)
 app.include_router(challenges.router)
 app.include_router(notifications.router)
 
-# --- 2. Mount Static Files to Root ("/") ---
-# This "html=True" setting is magic. 
-# It means if you visit "/", it looks for "index.html".
-# If you visit "/register.html", it looks for "register.html".
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# --- 2. Explicit Root Route (The Fix) ---
+# This forces the server to show index.html when you open the main link
+@app.get("/")
+async def read_index():
+    return FileResponse("static/index.html")
 
-# Note: We removed the manual @app.get("/") because the mount handles it now.
+# --- 3. Mount Static Files ---
+# This handles all other files like /login.html, /dashboard.html, /css/...
+# We name it "static" but mount it to root "/" so URLs look clean.
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
