@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-
+from fastapi import Response
 from database import get_db
 from models.user_models import User
 
@@ -127,11 +127,9 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     return new_user
 
 @router.post("/login", response_model=Token)
-def login(item: UserRegister, db: Session = Depends(get_db)):
-    # Note: Using UserRegister schema just to get email/pass fields easily
+def login(item: UserRegister, response: Response, db: Session = Depends(get_db)):
+    # 1. Verify User
     user = db.query(User).filter(User.email == item.email).first()
-    
-    # Secure Comparison
     if not user or not verify_password(item.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -139,10 +137,19 @@ def login(item: UserRegister, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Generate Real JWT
+    # 2. Create Token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    
+    # 3. SET SECURE COOKIE (The Key Fix)
+    # This attaches the token to the browser automatically for page requests
+    response.set_cookie(
+        key="access_token", 
+        value=f"Bearer {access_token}", 
+        httponly=True,   # JavaScript cannot steal this (XSS Protection)
+        samesite="lax"   # Protects against CSRF
     )
     
     return {
