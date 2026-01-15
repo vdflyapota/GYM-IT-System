@@ -3,13 +3,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from database import engine, Base
 
-# Import all models
+# Import all models to ensure tables are created
 from models import user_models, tournament_models, challenge_models, notification_models
 
 # Import routers
 from routers import auth, tournaments, challenges, notifications
 
-# Create Tables
+# Create Database Tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -18,20 +18,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- 1. Register API Routers ---
-# These must run FIRST so the API is not blocked by static files
+# --- 1. Register API Routers (Backend Logic) ---
 app.include_router(auth.router)
 app.include_router(tournaments.router)
 app.include_router(challenges.router)
 app.include_router(notifications.router)
 
-# --- 2. Explicit Root Route (The Fix) ---
-# This forces the server to show index.html when you open the main link
+# --- 2. THE FIX: Explicitly Serve the Homepage ---
+# This tells the server: "When user goes to '/', give them index.html"
 @app.get("/")
 async def read_index():
     return FileResponse("static/index.html")
 
 # --- 3. Mount Static Files ---
-# This handles all other files like /login.html, /dashboard.html, /css/...
-# We name it "static" but mount it to root "/" so URLs look clean.
+# This handles css, images, and other html files (like login.html)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

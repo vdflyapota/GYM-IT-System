@@ -122,13 +122,34 @@
 
 <script>
     // 1. Load User Data from LocalStorage (Simulated Session)
-    const email = localStorage.getItem('user') || 'guest@gym.com';
-    const name = email.split('@')[0];
+    const token = localStorage.getItem('token');
     
-    document.getElementById('userDisplay').innerText = name;
-    document.getElementById('profileName').innerText = name.toUpperCase();
-    document.getElementById('profileEmail').innerText = email;
-    document.getElementById('avatar').src = `https://ui-avatars.com/api/?name=${name}&background=198754&color=fff`;
+    if(!token) window.location.href = 'login.html';
+
+    async function loadProfile() {
+        try {
+            const res = await fetch('/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if(res.ok) {
+                const user = await res.json();
+                // Update UI with REAL Database data
+                document.getElementById('userDisplay').innerText = user.full_name;
+                document.getElementById('profileName').innerText = user.full_name;
+                document.getElementById('profileEmail').innerText = user.email;
+                document.getElementById('profileRole').innerText = user.role.toUpperCase();
+                
+                // Avatar generator based on real name
+                document.getElementById('avatar').src = 
+                    `https://ui-avatars.com/api/?name=${user.full_name}&background=198754&color=fff`;
+            }
+        } catch(e) {
+            console.error("Could not load profile");
+        }
+    }
+
+    loadProfile();
 
     // 2. Render Chart (Chart.js)
     const ctx = document.getElementById('activityChart').getContext('2d');

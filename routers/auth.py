@@ -172,3 +172,11 @@ def change_user_role(
     user.role = update.role
     db.commit()
     return {"status": "success", "new_role": user.role}
+
+@router.get("/me", response_model=UserResponse)
+def read_users_me(current_user: User = Depends(get_current_user)):
+    """
+    Fetch the current logged-in user's profile.
+    Front-end uses this to show "Welcome, Yazan Slaila" instead of guessing.
+    """
+    return current_user
