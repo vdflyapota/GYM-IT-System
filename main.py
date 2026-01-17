@@ -72,4 +72,19 @@ async def read_index():
 # --- 4. Mount Static Files ---
 # Handles all public files (images, css, js, login.html, etc.)
 # Note: "admin.html" is NO LONGER here, so the public cannot reach it.
+# --- Explicit Routes for Critical Pages ---
+# This forces the server to find these specific files
+@app.get("/register.html")
+async def read_register():
+    return FileResponse("static/register.html")
+
+@app.get("/login.html")
+async def read_login():
+    return FileResponse("static/login.html")
+
+@app.get("/dashboard.html")
+async def read_dashboard():
+    return FileResponse("static/dashboard.html")
+
+# --- Mount Static Files (Keep this at the very end) ---
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

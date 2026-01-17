@@ -1,42 +1,98 @@
-# routers/challenges.py
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from pydantic import BaseModel
+from datetime import datetime
+
 from database import get_db
-from models import challenge_models, user_models
-import schemas
+from models.challenge_models import Challenge
+from models.user_models import User
+from routers.auth import get_current_user, get_current_trainer, get_current_admin
 
-router = APIRouter(prefix="/challenges", tags=["Challenges & Leaderboards"])
+router = APIRouter(prefix="/challenges", tags=["Challenges"])
 
-@router.post("/create")
-def create_challenge(c: schemas.ChallengeCreate, db: Session = Depends(get_db)):
-    new_challenge = challenge_models.Challenge(name=c.name, metric=c.metric, points=c.points)
+# --- SCHEMAS ---
+class ChallengeCreate(BaseModel):
+    title: str
+    description: str
+    difficulty: str
+    points: int
+
+class ChallengeResponse(ChallengeCreate):
+    id: int
+    created_at: datetime
+    is_active: bool  # Send status to frontend
+    class Config:
+        from_attributes = True
+
+# --- ENDPOINTS ---
+
+@router.get("/", response_model=List[ChallengeResponse])
+def get_challenges(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """
+    Logic:
+    - Members: See ONLY active challenges.
+    - Admins: See ALL challenges (so they can approve pending ones).
+    """
+    if current_user and current_user.role == "admin":
+        return db.query(Challenge).all() # Admin sees everything
+    
+    # Everyone else sees only approved content
+    return db.query(Challenge).filter(Challenge.is_active == True).all()
+
+@router.post("/", response_model=ChallengeResponse)
+def create_challenge(
+    challenge: ChallengeCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_trainer) 
+):
+    """Trainers create challenges, but they are INACTIVE by default."""
+    
+    # Auto-approve if the creator is an Admin
+    auto_approve = (current_user.role == "admin")
+    
+    new_challenge = Challenge(
+        title=challenge.title,
+        description=challenge.description,
+        difficulty=challenge.difficulty,
+        points=challenge.points,
+        created_at=datetime.utcnow(),
+        is_active=auto_approve # True if Admin, False if Trainer
+    )
     db.add(new_challenge)
     db.commit()
-    return {"status": "Challenge Created"}
+    db.refresh(new_challenge)
+    return new_challenge
 
-@router.post("/submit-score")
-def submit_score(s: schemas.ScoreSubmit, user_id: int = 1, db: Session = Depends(get_db)):
-    # Note: user_id=1 is hardcoded for simplicity until Auth is fully linked
-    new_score = challenge_models.Score(
-        user_id=user_id, 
-        challenge_id=s.challenge_id, 
-        value=s.value
-    )
-    db.add(new_score)
-    db.commit()
-    return {"status": "Score Recorded"}
-
-@router.get("/leaderboard", response_model=list[schemas.LeaderboardEntry])
-def get_leaderboard(db: Session = Depends(get_db)):
-    """
-    Complex Query: Sums points for each user to create a ranking.
-    Demonstrates 'Responsiveness' (Aggregation handled in SQL, not Python)
-    """
-    # Join Users and Scores, sum the points
-    results = db.query(
-        user_models.User.full_name,
-        func.sum(challenge_models.Score.value).label("total_score")
-    ).join(challenge_models.Score).group_by(user_models.User.id).order_by(func.sum(challenge_models.Score.value).desc()).all()
+# --- NEW: APPROVAL ENDPOINT ---
+@router.put("/{challenge_id}/approve")
+def approve_challenge(
+    challenge_id: int, 
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin) # SECURITY: Admins Only
+):
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
     
-    return [{"user_name": row[0], "total_score": row[1]} for row in results]
+    challenge.is_active = True
+    db.commit()
+    return {"status": "approved", "title": challenge.title}
+
+# --- NEW: DELETE ENDPOINT (Optional cleanup) ---
+@router.delete("/{challenge_id}")
+def delete_challenge(
+    challenge_id: int, 
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    db.delete(challenge)
+    db.commit()
+    return {"status": "deleted"}
