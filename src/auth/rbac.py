@@ -3,8 +3,6 @@ from flask import jsonify
 from flask_jwt_extended import get_jwt
 from werkzeug.exceptions import Forbidden
 
-ROLES = {"admin", "trainer", "member"}
-
 def require_role(*allowed_roles):
     def decorator(fn):
         @wraps(fn)

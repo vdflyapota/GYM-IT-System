@@ -16,6 +16,7 @@ from .auth.api import auth_bp
 from .users.api import users_bp
 from .tournaments.api import tournaments_bp
 from .notifications.api import notifications_bp
+from .reporting.api import reporting_bp
 
 # Optional blueprints
 try:
@@ -49,13 +50,14 @@ def create_app():
     PrometheusMetrics(app)  # /metrics
     register_custom_metrics(app)
 
-    # Register blueprints matching frontend fetch() paths
-    app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(users_bp, url_prefix="/users")
-    app.register_blueprint(tournaments_bp, url_prefix="/tournaments")
+    # Register blueprints under /api prefix
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(users_bp, url_prefix="/api/users")
+    app.register_blueprint(tournaments_bp, url_prefix="/api/tournaments")
     if HAS_CHALLENGES:
-        app.register_blueprint(challenges_bp, url_prefix="/challenges")
-    app.register_blueprint(notifications_bp, url_prefix="/notifications")
+        app.register_blueprint(challenges_bp, url_prefix="/api/challenges")
+    app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
+    app.register_blueprint(reporting_bp, url_prefix="/api/reporting")
 
     @app.route("/healthz")
     def healthz():

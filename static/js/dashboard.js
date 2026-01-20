@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Try to load the current user info for display
   try {
-    const res = await authFetch("/users/me");
+    const res = await authFetch("/api/users/me");
     if (res.ok) {
       const me = await res.json();
       if (userDisplay) userDisplay.textContent = me.full_name || me.email || "Unknown";
@@ -27,6 +27,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } catch (e) {
     // Not logged in or request failed; leave defaults
-    console.warn("Could not load /users/me", e);
+    console.warn("Could not load /api/users/me", e);
   }
 });

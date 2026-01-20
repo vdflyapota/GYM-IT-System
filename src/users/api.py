@@ -1,9 +1,8 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
-from werkzeug.security import generate_password_hash
 from src.auth.rbac import require_role
-from src.common.db import db
 from src.users.models import User
+from src.users import repository, service
 
 users_bp = Blueprint("users", __name__)
 
@@ -15,7 +14,7 @@ def _protect_root(user: User):
 def me():
     from flask_jwt_extended import get_jwt_identity
     email = get_jwt_identity()
-    user = User.query.filter_by(email=email).first()
+    user = repository.get_by_email(email)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     return jsonify({
@@ -33,7 +32,7 @@ def me():
 @jwt_required()
 @require_role("admin")
 def list_users():
-    users = User.query.all()
+    users = repository.list_all()
     return jsonify([
         {
             "id": u.id,
@@ -63,21 +62,9 @@ def create_admin():
 
     if not email or not password or not full_name:
         return jsonify({"detail": "Missing required fields"}), 400
-    if User.query.filter_by(email=email).first():
+    if repository.get_by_email(email):
         return jsonify({"detail": "Email already exists"}), 409
-
-    user = User(
-        email=email,
-        full_name=full_name,
-        role="admin",
-        password_hash=generate_password_hash(password),
-        is_active=True,
-        is_approved=True,
-        is_banned=False,
-        is_root_admin=False,
-    )
-    db.session.add(user)
-    db.session.commit()
+    user = service.create_admin(email=email, full_name=full_name, password=password)
     return jsonify({"detail": "Admin created", "user_id": user.id}), 201
 
 @users_bp.patch("/role")
@@ -89,13 +76,12 @@ def change_role():
     new_role = (data.get("role") or "").lower()
     if new_role not in {"admin", "trainer", "member"}:
         return jsonify({"detail": "Invalid role"}), 400
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     if _protect_root(user):
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
-    user.role = new_role
-    db.session.commit()
+    user = service.change_role(user, new_role)
     return jsonify({"detail": "Role updated", "user": {"id": user.id, "email": user.email, "role": user.role}}), 200
 
 @users_bp.post("/approve")
@@ -104,14 +90,11 @@ def change_role():
 def approve_user():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     # approving root or others is fine
-    user.is_approved = True
-    user.is_active = True
-    user.is_banned = False
-    db.session.commit()
+    service.approve_user(user)
     return jsonify({"detail": "User approved"}), 200
 
 @users_bp.post("/deactivate")
@@ -120,13 +103,12 @@ def approve_user():
 def deactivate_user():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     if _protect_root(user):
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
-    user.is_active = False
-    db.session.commit()
+    service.deactivate_user(user)
     return jsonify({"detail": "User deactivated"}), 200
 
 @users_bp.post("/ban")
@@ -135,14 +117,12 @@ def deactivate_user():
 def ban_user():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     if _protect_root(user):
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
-    user.is_banned = True
-    user.is_active = False
-    db.session.commit()
+    service.ban_user(user)
     return jsonify({"detail": "User banned"}), 200
 
 @users_bp.post("/unban")
@@ -151,24 +131,22 @@ def ban_user():
 def unban_user():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
-    user.is_banned = False
-    db.session.commit()
+    service.unban_user(user)
     return jsonify({"detail": "User unbanned"}), 200
 
 @users_bp.delete("/<int:user_id>")
 @jwt_required()
 @require_role("admin")
 def delete_user(user_id: int):
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     if _protect_root(user):
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
-    db.session.delete(user)
-    db.session.commit()
+    repository.delete(user)
     return jsonify({"detail": "User deleted"}), 200
 
 @users_bp.post("/reset_password")
@@ -184,11 +162,10 @@ def reset_password():
     new_password = data.get("new_password") or ""
     if not user_id or not new_password:
         return jsonify({"detail": "user_id and new_password are required"}), 400
-    user = User.query.get(user_id)
+    user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
     if _protect_root(user):
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
-    user.password_hash = generate_password_hash(new_password)
-    db.session.commit()
+    service.reset_password(user, new_password)
     return jsonify({"detail": "Password updated"}), 200

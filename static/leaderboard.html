@@ -29,7 +29,7 @@
 <script>
     async function loadLeaderboard() {
         // Fetch from Yeldana's API
-        const response = await fetch('/challenges/leaderboard');
+        const response = await fetch('/api/challenges/leaderboard');
         const data = await response.json();
         
         const tbody = document.getElementById('leaderboardBody');

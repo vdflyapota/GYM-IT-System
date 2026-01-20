@@ -3,6 +3,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
 from src.common.db import db
 from src.users.models import User
+from src.observability.metrics import login_counter
+from src.auth.roles import ROLES
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -16,7 +18,7 @@ def register():
 
     if not email or not password or not full_name:
         return jsonify({"detail": "Missing required fields"}), 400
-    if role not in {"admin", "trainer", "member"}:
+    if role not in ROLES:
         return jsonify({"detail": "Invalid role"}), 400
 
     existing = User.query.filter_by(email=email).first()
@@ -50,13 +52,18 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
+        login_counter.labels(status="failure").inc()
         return jsonify({"detail": "Invalid credentials"}), 401
     if user.is_banned:
+        login_counter.labels(status="failure").inc()
         return jsonify({"detail": "Account banned"}), 403
     if not user.is_active:
+        login_counter.labels(status="failure").inc()
         return jsonify({"detail": "Inactive account"}), 403
     if not user.is_approved:
+        login_counter.labels(status="failure").inc()
         return jsonify({"detail": "Account pending approval"}), 403
 
     access_token = create_access_token(identity=user.email, additional_claims={"role": user.role})
+    login_counter.labels(status="success").inc()
     return jsonify({"access_token": access_token, "token_type": "bearer", "role": user.role}), 200

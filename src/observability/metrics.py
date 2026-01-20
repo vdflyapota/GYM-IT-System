@@ -4,6 +4,9 @@ from prometheus_client import Counter
 http_request_counter = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
+login_counter = Counter(
+    "auth_logins_total", "Total login attempts", ["status"]
+)
 
 def register_custom_metrics(app):
     @app.after_request

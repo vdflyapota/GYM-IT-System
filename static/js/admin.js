@@ -15,7 +15,7 @@ function wireCreateAdminForm() {
     const full_name = document.getElementById("newAdminName").value.trim();
     const password = document.getElementById("newAdminPassword").value;
     try {
-      const res = await authFetch("/users/create_admin", {
+      const res = await authFetch("/api/users/create_admin", {
         method: "POST",
         body: { email, full_name, password },
       });
@@ -39,7 +39,7 @@ async function loadUsers() {
   tbody.innerHTML = "";
 
   try {
-    const res = await authFetch("/users/");
+    const res = await authFetch("/api/users/");
     if (!res.ok) {
       const errText = await res.text();
       throw new Error(`Failed: ${res.status} ${errText}`);
@@ -98,21 +98,21 @@ function actionButtons(u) {
 }
 
 async function approveUser(userId) {
-  await postJSON("/users/approve", { user_id: userId }, "User approved");
+  await postJSON("/api/users/approve", { user_id: userId }, "User approved");
 }
 async function deactivateUser(userId) {
-  await postJSON("/users/deactivate", { user_id: userId }, "User deactivated");
+  await postJSON("/api/users/deactivate", { user_id: userId }, "User deactivated");
 }
 async function banUser(userId) {
-  await postJSON("/users/ban", { user_id: userId }, "User banned");
+  await postJSON("/api/users/ban", { user_id: userId }, "User banned");
 }
 async function unbanUser(userId) {
-  await postJSON("/users/unban", { user_id: userId }, "User unbanned");
+  await postJSON("/api/users/unban", { user_id: userId }, "User unbanned");
 }
 async function deleteUser(userId) {
   const ok = confirm("Are you sure you want to delete this user?");
   if (!ok) return;
-  const res = await authFetch(`/users/${userId}`, { method: "DELETE" });
+  const res = await authFetch(`/api/users/${userId}`, { method: "DELETE" });
   await handleResponse(res, "User deleted");
 }
 
