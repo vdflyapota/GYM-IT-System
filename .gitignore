@@ -1,2 +1,33 @@
-gym.db
+# Python
 __pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node (if ever used)
+node_modules/
+
+# Docker
+*.pid
