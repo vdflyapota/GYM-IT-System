@@ -8,7 +8,7 @@ def get_by_email(email: str) -> Optional[User]:
 
 
 def get_by_id(user_id: int) -> Optional[User]:
-    return User.query.get(user_id)
+    return db.session.get(User, user_id)
 
 
 def list_all() -> List[User]:

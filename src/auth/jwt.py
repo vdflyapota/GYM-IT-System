@@ -10,3 +10,7 @@ def init_jwt(app):
     @jwt.unauthorized_loader
     def missing_token_callback(err):
         return {"message": "Missing or invalid token"}, 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(err):
+        return {"message": "Invalid token"}, 401

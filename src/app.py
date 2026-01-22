@@ -38,7 +38,7 @@ def create_app():
     app.config.from_object(Config)
 
     # CORS + logging
-    CORS(app)
+    CORS(app, origins=app.config.get("CORS_ORIGINS"))
     configure_logging(app)
 
     # DB + JWT + RBAC handlers

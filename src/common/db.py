@@ -17,11 +17,10 @@ def _ensure_columns(app):
     Uses IF NOT EXISTS to avoid errors on repeated runs.
     """
     try:
-        conn = db.engine.connect()
-        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE NOT NULL;")
-        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE NOT NULL;")
-        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_root_admin BOOLEAN DEFAULT FALSE NOT NULL;")
-        conn.close()
+        with db.engine.begin() as conn:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE NOT NULL;")
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE NOT NULL;")
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_root_admin BOOLEAN DEFAULT FALSE NOT NULL;")
         app.logger.info("Ensured users approval/root columns exist.")
     except Exception as e:
         app.logger.warning(f"Could not ensure schema columns: {e}")
@@ -60,6 +59,12 @@ def _ensure_bootstrap_admin(app):
                 changed = True
             if not target.is_approved:
                 target.is_approved = True
+                changed = True
+            if not target.is_active:
+                target.is_active = True
+                changed = True
+            if target.is_banned:
+                target.is_banned = False
                 changed = True
             if changed:
                 db.session.commit()

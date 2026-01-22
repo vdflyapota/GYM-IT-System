@@ -8,4 +8,5 @@ def configure_logging(app):
     )
     handler.setFormatter(formatter)
     app.logger.setLevel(logging.INFO)
+    app.logger.handlers.clear()
     app.logger.addHandler(handler)

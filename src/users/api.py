@@ -9,6 +9,13 @@ users_bp = Blueprint("users", __name__)
 def _protect_root(user: User):
     return bool(user and user.is_root_admin)
 
+def _parse_user_id(data):
+    raw = data.get("user_id")
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
 @users_bp.get("/me")
 @jwt_required()
 def me():
@@ -72,8 +79,10 @@ def create_admin():
 @require_role("admin")
 def change_role():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
     new_role = (data.get("role") or "").lower()
+    if not user_id:
+        return jsonify({"detail": "user_id is required"}), 400
     if new_role not in {"admin", "trainer", "member"}:
         return jsonify({"detail": "Invalid role"}), 400
     user = repository.get_by_id(user_id)
@@ -89,7 +98,9 @@ def change_role():
 @require_role("admin")
 def approve_user():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
+    if not user_id:
+        return jsonify({"detail": "user_id is required"}), 400
     user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
@@ -102,7 +113,9 @@ def approve_user():
 @require_role("admin")
 def deactivate_user():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
+    if not user_id:
+        return jsonify({"detail": "user_id is required"}), 400
     user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
@@ -116,7 +129,9 @@ def deactivate_user():
 @require_role("admin")
 def ban_user():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
+    if not user_id:
+        return jsonify({"detail": "user_id is required"}), 400
     user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
@@ -130,7 +145,9 @@ def ban_user():
 @require_role("admin")
 def unban_user():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
+    if not user_id:
+        return jsonify({"detail": "user_id is required"}), 400
     user = repository.get_by_id(user_id)
     if not user:
         return jsonify({"detail": "User not found"}), 404
@@ -158,7 +175,7 @@ def reset_password():
     Body: { "user_id": int, "new_password": str }
     """
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
+    user_id = _parse_user_id(data)
     new_password = data.get("new_password") or ""
     if not user_id or not new_password:
         return jsonify({"detail": "user_id and new_password are required"}), 400

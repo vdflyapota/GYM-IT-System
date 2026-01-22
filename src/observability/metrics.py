@@ -13,7 +13,7 @@ def register_custom_metrics(app):
     def after_request(response):
         try:
             http_request_counter.labels(
-                request.method, request.path, response.status_code
+                request.method, request.path, str(response.status_code)
             ).inc()
         except Exception:
             pass

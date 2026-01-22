@@ -10,7 +10,7 @@ tournaments_bp = Blueprint("tournaments", __name__)
 @jwt_required()
 @require_role("trainer", "admin")
 def submit_result():
-    payload = request.get_json() or {}
+    payload = request.get_json(silent=True) or {}
     # TODO: persist result in DB
     # For now, compute from a placeholder list
     sample_results = [
