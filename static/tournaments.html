@@ -92,22 +92,48 @@
 
 <!-- Add Participants Modal -->
 <div class="modal fade" id="participantModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Add Participants</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="participantForm">
-                    <div class="mb-3">
-                        <label class="form-label">Participant Names (one per line)</label>
-                        <textarea id="participantNames" class="form-control" rows="8" 
-                                  placeholder="Player 1&#10;Player 2&#10;Player 3&#10;..." required></textarea>
-                        <small class="text-muted">Enter one participant name per line</small>
+                <ul class="nav nav-tabs mb-3" id="participantTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-panel" 
+                                type="button" role="tab">Select Users</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" 
+                                type="button" role="tab">Manual Entry</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="participantTabContent">
+                    <!-- Select from existing users -->
+                    <div class="tab-pane fade show active" id="users-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label">Select users to add to tournament:</label>
+                            <div id="usersList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted">Loading users...</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addSelectedUsers()" class="btn btn-primary w-100">Add Selected Users</button>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Add Participants</button>
-                </form>
+                    
+                    <!-- Manual entry -->
+                    <div class="tab-pane fade" id="manual-panel" role="tabpanel">
+                        <form id="participantForm">
+                            <div class="mb-3">
+                                <label class="form-label">Participant Names (one per line)</label>
+                                <textarea id="participantNames" class="form-control" rows="8" 
+                                          placeholder="Player 1&#10;Player 2&#10;Player 3&#10;..." required></textarea>
+                                <small class="text-muted">Enter one participant name per line</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Add Participants</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -123,6 +149,32 @@
             </div>
             <div class="modal-body bg-light">
                 <div id="bracketContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Match Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Match Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="resultForm">
+                    <div class="mb-3">
+                        <label class="form-label">Select Winner</label>
+                        <div id="winnerSelection"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Score (optional)</label>
+                        <input type="text" id="matchScore" class="form-control" placeholder="e.g., 3-2, 6-4">
+                        <small class="text-muted">Enter the match score if applicable</small>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Record Result</button>
+                </form>
             </div>
         </div>
     </div>

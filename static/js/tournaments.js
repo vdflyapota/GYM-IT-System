@@ -227,8 +227,116 @@ async function openParticipantModal(tournamentId) {
     currentTournament = currentTournaments.find(t => t.id === tournamentId);
     if (!currentTournament) return;
 
+    // Load available users
+    await loadAvailableUsers();
+
     const modal = new bootstrap.Modal(document.getElementById('participantModal'));
     modal.show();
+}
+
+/**
+ * Load available users for tournament
+ */
+async function loadAvailableUsers() {
+    const usersList = document.getElementById('usersList');
+    if (!usersList) return;
+
+    try {
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+
+        const response = await fetchFn(`${API_BASE}/available-users`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const users = data.users || [];
+            
+            if (users.length === 0) {
+                usersList.innerHTML = '<p class="text-muted">No users available</p>';
+                return;
+            }
+
+            usersList.innerHTML = users.map(user => `
+                <div class="form-check mb-2">
+                    <input class="form-check-input user-checkbox" type="checkbox" value="${user.id}" 
+                           id="user-${user.id}" data-name="${escapeHtml(user.name)}">
+                    <label class="form-check-label" for="user-${user.id}">
+                        ${escapeHtml(user.name)} <small class="text-muted">(${escapeHtml(user.email)})</small>
+                    </label>
+                </div>
+            `).join('');
+        } else {
+            usersList.innerHTML = '<p class="text-danger">Failed to load users</p>';
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        usersList.innerHTML = '<p class="text-danger">Error loading users</p>';
+    }
+}
+
+/**
+ * Add selected users to tournament
+ */
+async function addSelectedUsers() {
+    if (!currentTournament) return;
+
+    const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one user');
+        return;
+    }
+
+    const participants = Array.from(checkboxes).map(cb => ({
+        user_id: parseInt(cb.value),
+        name: cb.dataset.name
+    }));
+
+    try {
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+
+        const response = await fetchFn(`${API_BASE}/${currentTournament.id}/participants`, {
+            method: 'PUT',
+            headers: headers,
+            body: typeof authFetch !== 'undefined' ? { participants } : JSON.stringify({ participants })
+        });
+
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('participantModal'));
+            if (modal) modal.hide();
+            
+            await loadTournaments();
+            showMessage('Users added to tournament successfully!', 'success');
+        } else {
+            let errorMessage = 'Failed to add users';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            
+            if (response.status === 401) {
+                errorMessage = 'Please log in to add participants';
+            } else if (response.status === 403) {
+                errorMessage = 'You need trainer or admin privileges to add participants';
+            }
+            
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error adding users:', error);
+        alert('Network error: Unable to add users. Please check your connection.');
+    }
 }
 
 /**
@@ -377,6 +485,7 @@ function renderBracket(tournament, bracket) {
             const p1Name = match.participant1 ? match.participant1.name : 'TBD';
             const p2Name = match.participant2 ? match.participant2.name : 'TBD';
             const isDecided = match.winner_id !== null;
+            const canRecordResult = match.participant1 && match.participant2 && !isDecided;
             const winner = isDecided ? (match.winner?.name || '') : null;
 
             html += `<div class="bracket-match border rounded p-2 bg-white shadow-sm" style="min-width: 200px;">
@@ -388,6 +497,10 @@ function renderBracket(tournament, bracket) {
                     ${escapeHtml(p2Name)}
                 </div>
                 ${match.score ? `<div class="text-center small text-muted mt-1">${escapeHtml(match.score)}</div>` : ''}
+                ${canRecordResult ? `<button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="openResultModal(${tournament.id}, ${match.id}, ${JSON.stringify(match.participant1).replace(/"/g, '&quot;')}, ${JSON.stringify(match.participant2).replace(/"/g, '&quot;')})">
+                    <i class="fas fa-trophy"></i> Record Result
+                </button>` : ''}
+                ${isDecided ? `<div class="text-center small text-success mt-1"><i class="fas fa-check-circle"></i> Winner: ${escapeHtml(winner)}</div>` : ''}
             </div>`;
         });
 
@@ -415,6 +528,121 @@ function getRoundName(roundNum, totalRounds) {
     if (round === total - 1) return 'Semi-Finals';
     if (round === total - 2) return 'Quarter-Finals';
     return `Round ${round}`;
+}
+
+// Global state for current match
+let currentMatch = null;
+
+/**
+ * Open result recording modal
+ */
+function openResultModal(tournamentId, bracketId, participant1, participant2) {
+    currentMatch = {
+        tournamentId: tournamentId,
+        bracketId: bracketId,
+        participant1: participant1,
+        participant2: participant2
+    };
+
+    const winnerSelection = document.getElementById('winnerSelection');
+    if (!winnerSelection) return;
+
+    winnerSelection.innerHTML = `
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="winner" value="${participant1.id}" id="winner1" required>
+            <label class="form-check-label" for="winner1">
+                ${escapeHtml(participant1.name)}
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="winner" value="${participant2.id}" id="winner2" required>
+            <label class="form-check-label" for="winner2">
+                ${escapeHtml(participant2.name)}
+            </label>
+        </div>
+    `;
+
+    // Clear score field
+    const scoreField = document.getElementById('matchScore');
+    if (scoreField) scoreField.value = '';
+
+    // Setup form submission
+    const form = document.getElementById('resultForm');
+    if (form) {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            await recordMatchResult();
+        };
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+    modal.show();
+}
+
+/**
+ * Record match result
+ */
+async function recordMatchResult() {
+    if (!currentMatch) return;
+
+    const winnerRadio = document.querySelector('input[name="winner"]:checked');
+    if (!winnerRadio) {
+        alert('Please select a winner');
+        return;
+    }
+
+    const winnerId = parseInt(winnerRadio.value);
+    const score = document.getElementById('matchScore').value;
+
+    try {
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+
+        const body = { winner_id: winnerId };
+        if (score) body.score = score;
+
+        const response = await fetchFn(
+            `${API_BASE}/${currentMatch.tournamentId}/bracket/${currentMatch.bracketId}/result`,
+            {
+                method: 'PUT',
+                headers: headers,
+                body: typeof authFetch !== 'undefined' ? body : JSON.stringify(body)
+            }
+        );
+
+        if (response.ok) {
+            // Close result modal
+            const resultModal = bootstrap.Modal.getInstance(document.getElementById('resultModal'));
+            if (resultModal) resultModal.hide();
+
+            // Refresh bracket
+            await viewBracket(currentMatch.tournamentId);
+
+            showMessage('Match result recorded successfully!', 'success');
+        } else {
+            let errorMessage = 'Failed to record result';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+
+            if (response.status === 401) {
+                errorMessage = 'Please log in to record results';
+            } else if (response.status === 403) {
+                errorMessage = 'You need trainer or admin privileges to record results';
+            }
+
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error recording result:', error);
+        alert('Network error: Unable to record result. Please check your connection.');
+    }
 }
 
 /**

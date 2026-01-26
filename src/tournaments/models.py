@@ -42,9 +42,10 @@ class Participant(db.Model):
 
     # Relationships
     tournament = db.relationship("Tournament", back_populates="participants")
+    user = db.relationship("User", foreign_keys=[user_id])
 
     def to_dict(self):
-        return {
+        result = {
             "id": self.id,
             "tournament_id": self.tournament_id,
             "user_id": self.user_id,
@@ -52,6 +53,10 @@ class Participant(db.Model):
             "seed": self.seed,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+        # Include user email if linked to a user
+        if self.user:
+            result["email"] = self.user.email
+        return result
 
 
 class Bracket(db.Model):

@@ -5,6 +5,7 @@ from .engine import compute_leaderboard, generate_single_elimination_bracket, ge
 from ..notifications.events import emit_leaderboard_update
 from src.common.db import db
 from .models import Tournament, Participant, Bracket
+from src.users.models import User
 from datetime import datetime
 
 tournaments_bp = Blueprint("tournaments", __name__)
@@ -170,6 +171,75 @@ def get_bracket(tournament_id):
     db.session.commit()
 
     return {"tournament": tournament.to_dict(), "bracket": [b.to_dict() for b in brackets]}, 200
+
+
+@tournaments_bp.get("/available-users")
+@jwt_required()
+@require_role("trainer", "admin")
+def get_available_users():
+    """Get list of active users that can be added to tournaments"""
+    users = User.query.filter_by(is_active=True, is_approved=True, is_banned=False).all()
+    return {
+        "users": [
+            {"id": u.id, "name": u.full_name, "email": u.email, "role": u.role} for u in users
+        ]
+    }, 200
+
+
+@tournaments_bp.put("/<int:tournament_id>/bracket/<int:bracket_id>/result")
+@jwt_required()
+@require_role("trainer", "admin")
+def record_match_result(tournament_id, bracket_id):
+    """Record the result of a bracket match"""
+    tournament = db.session.get(Tournament, tournament_id)
+    if not tournament:
+        return {"error": "Tournament not found"}, 404
+
+    bracket = db.session.get(Bracket, bracket_id)
+    if not bracket or bracket.tournament_id != tournament_id:
+        return {"error": "Bracket match not found"}, 404
+
+    payload = request.get_json(silent=True) or {}
+    winner_id = payload.get("winner_id")
+    score = payload.get("score")
+
+    if not winner_id:
+        return {"error": "Winner ID is required"}, 400
+
+    # Verify winner is one of the participants in this match
+    if winner_id not in [bracket.participant1_id, bracket.participant2_id]:
+        return {"error": "Winner must be one of the match participants"}, 400
+
+    # Update bracket with result
+    bracket.winner_id = winner_id
+    if score:
+        bracket.score = score
+
+    # Check if we need to advance winner to next round
+    current_round = bracket.round
+    current_match = bracket.match_number
+
+    # Find next round match (winner advances)
+    next_round = current_round + 1
+    next_match = (current_match + 1) // 2  # Two matches feed into one in next round
+
+    next_bracket = Bracket.query.filter_by(
+        tournament_id=tournament_id, round=next_round, match_number=next_match
+    ).first()
+
+    if next_bracket:
+        # Determine if winner goes to participant1 or participant2 slot
+        if current_match % 2 == 1:  # Odd match number goes to participant1
+            next_bracket.participant1_id = winner_id
+        else:  # Even match number goes to participant2
+            next_bracket.participant2_id = winner_id
+
+    db.session.commit()
+
+    return {
+        "message": "Match result recorded successfully",
+        "bracket": bracket.to_dict(),
+    }, 200
 
 
 # Legacy endpoints for backward compatibility
