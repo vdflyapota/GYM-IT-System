@@ -92,6 +92,12 @@ Each service has its own PostgreSQL database to ensure data isolation:
 
 ### Running the Microservices
 
+**Important**: If you were previously running the old monolithic version, stop it first to avoid port conflicts:
+
+```bash
+docker compose -f docker-compose.yml down
+```
+
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/vdflyapota/GYM-IT-System.git
@@ -99,8 +105,15 @@ Each service has its own PostgreSQL database to ensure data isolation:
    ```
 
 2. **Start all services**:
+   
+   Using the automated script (recommended):
    ```bash
-   docker-compose -f docker-compose.microservices.yml up --build
+   ./scripts/start-microservices.sh
+   ```
+   
+   Or manually:
+   ```bash
+   docker compose -f docker-compose.microservices.yml up --build -d --remove-orphans
    ```
 
 3. **Access the application**:
@@ -306,6 +319,43 @@ The original monolithic application has been split as follows:
 | `src/app.py` | api-gateway | Request routing |
 
 ## Troubleshooting
+
+### Port Already Allocated Error
+
+If you see an error like `Bind for 0.0.0.0:8002 failed: port is already allocated`, this means:
+
+1. **Old monolithic containers are still running**:
+   ```bash
+   docker compose -f docker-compose.yml down
+   ```
+
+2. **Another service is using the port**:
+   ```bash
+   # Find what's using the port (on Linux/Mac)
+   lsof -i :8002
+   
+   # Stop all Docker containers
+   docker stop $(docker ps -aq)
+   ```
+
+3. **Use the automated script** which handles cleanup:
+   ```bash
+   ./scripts/start-microservices.sh
+   ```
+
+### Orphan Containers Warning
+
+If you see warnings about orphan containers (`gymit-api`, `gymit-db`), use the `--remove-orphans` flag:
+
+```bash
+docker compose -f docker-compose.microservices.yml up -d --remove-orphans
+```
+
+Or use the stop script to clean everything:
+
+```bash
+./scripts/stop-microservices.sh
+```
 
 ### Service Cannot Connect to Database
 

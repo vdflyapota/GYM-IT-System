@@ -21,11 +21,22 @@ if [ ! -f .env ]; then
 fi
 
 echo ""
+echo "Checking for conflicting containers..."
+echo ""
+
+# Stop old monolithic containers if they're running
+if docker ps -a --format '{{.Names}}' | grep -q "gymit-api\|gymit-db"; then
+    echo "Found old monolithic containers. Stopping them..."
+    docker compose -f docker-compose.yml down 2>/dev/null || true
+    echo "✓ Old containers stopped"
+fi
+
+echo ""
 echo "Starting all microservices..."
 echo ""
 
-# Start services
-docker compose -f docker-compose.microservices.yml up -d
+# Start services with --remove-orphans to clean up any orphan containers
+docker compose -f docker-compose.microservices.yml up -d --remove-orphans
 
 echo ""
 echo "Waiting for services to be healthy..."

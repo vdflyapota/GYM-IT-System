@@ -14,12 +14,17 @@ This project has been migrated to a microservices architecture! See the comprehe
 # Start all microservices
 ./scripts/start-microservices.sh
 
+# Stop all microservices
+./scripts/stop-microservices.sh
+
 # Test the services
 ./scripts/test-microservices.sh
 
 # Access the application
 # API Gateway: http://localhost:8000
 ```
+
+**Note**: If you were running the old monolithic version, the start script will automatically stop it to avoid port conflicts.
 
 ### Services
 

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # API Gateway - Entry point for all requests
   api-gateway:
