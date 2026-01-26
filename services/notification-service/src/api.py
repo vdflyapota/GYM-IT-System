@@ -24,7 +24,7 @@ def send_notification():
     user_id = data.get("user_id")
     
     if not message:
-        return jsonify({"error": "Message is required"}), 400
+        return jsonify({"detail": "Message is required"}), 400
     
     # Publish to Redis for WebSocket distribution
     if redis_client:
@@ -36,7 +36,7 @@ def send_notification():
             }
             redis_client.publish("notifications", json.dumps(payload))
         except Exception as e:
-            return jsonify({"error": f"Failed to publish notification: {str(e)}"}), 500
+            return jsonify({"detail": f"Failed to publish notification: {str(e)}"}), 500
     
     return jsonify({"detail": "Notification sent"}), 200
 
@@ -49,7 +49,7 @@ def broadcast_message():
     event_type = data.get("event_type", "broadcast")
     
     if not message:
-        return jsonify({"error": "Message is required"}), 400
+        return jsonify({"detail": "Message is required"}), 400
     
     # Publish to Redis for WebSocket distribution
     if redis_client:
@@ -60,7 +60,7 @@ def broadcast_message():
             }
             redis_client.publish("notifications", json.dumps(payload))
         except Exception as e:
-            return jsonify({"error": f"Failed to broadcast: {str(e)}"}), 500
+            return jsonify({"detail": f"Failed to broadcast: {str(e)}"}), 500
     
     return jsonify({"detail": "Message broadcasted"}), 200
 

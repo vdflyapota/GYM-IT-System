@@ -134,3 +134,41 @@ def validate_token():
 def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "service": "auth-service"}), 200
+
+@auth_bp.patch("/sync-approval")
+def sync_approval():
+    """Sync user approval status from user-service"""
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    is_approved = data.get("is_approved", False)
+    
+    if not user_id:
+        return jsonify({"detail": "user_id required"}), 400
+    
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    user.is_approved = is_approved
+    db.session.commit()
+    
+    return jsonify({"detail": "Approval status synced", "user_id": user_id}), 200
+
+@auth_bp.patch("/sync-ban")
+def sync_ban():
+    """Sync user ban status from user-service"""
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    is_banned = data.get("is_banned", False)
+    
+    if not user_id:
+        return jsonify({"detail": "user_id required"}), 400
+    
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    user.is_banned = is_banned
+    db.session.commit()
+    
+    return jsonify({"detail": "Ban status synced", "user_id": user_id}), 200

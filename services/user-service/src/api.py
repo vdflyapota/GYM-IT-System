@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app as app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+import requests
 from .models import db, User
+from .config import Config
 
 users_bp = Blueprint("users", __name__)
 
@@ -128,7 +130,18 @@ def approve_user():
     user.is_approved = True
     db.session.commit()
     
-    # TODO: Notify auth-service to update approval status
+    # Notify auth-service to update approval status
+    try:
+        auth_service_url = Config.AUTH_SERVICE_URL
+        response = requests.patch(
+            f"{auth_service_url}/api/auth/sync-approval",
+            json={"user_id": user_id, "is_approved": True},
+            timeout=5
+        )
+        if response.status_code != 200:
+            app.logger.warning(f"Failed to sync approval to auth-service: {response.text}")
+    except Exception as e:
+        app.logger.warning(f"Auth service sync failed: {str(e)}")
     
     return jsonify({"detail": "User approved", "user_id": user.id}), 200
 
@@ -153,7 +166,18 @@ def ban_user():
     user.is_banned = True
     db.session.commit()
     
-    # TODO: Notify auth-service to update ban status
+    # Notify auth-service to update ban status
+    try:
+        auth_service_url = Config.AUTH_SERVICE_URL
+        response = requests.patch(
+            f"{auth_service_url}/api/auth/sync-ban",
+            json={"user_id": user_id, "is_banned": True},
+            timeout=5
+        )
+        if response.status_code != 200:
+            app.logger.warning(f"Failed to sync ban to auth-service: {response.text}")
+    except Exception as e:
+        app.logger.warning(f"Auth service sync failed: {str(e)}")
     
     return jsonify({"detail": "User banned", "user_id": user.id}), 200
 

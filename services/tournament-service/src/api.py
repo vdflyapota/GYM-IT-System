@@ -32,15 +32,15 @@ def create_tournament():
     tournament_type = payload.get("tournament_type", "single_elimination")
 
     if not name:
-        return jsonify({"error": "Tournament name is required"}), 400
+        return jsonify({"detail": "Tournament name is required"}), 400
 
     if not start_date:
-        return jsonify({"error": "Start date is required"}), 400
+        return jsonify({"detail": "Start date is required"}), 400
 
     try:
         start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
-        return jsonify({"error": "Invalid start date format"}), 400
+        return jsonify({"detail": "Invalid start date format"}), 400
 
     tournament = Tournament(
         name=name,
@@ -69,7 +69,7 @@ def get_tournament(tournament_id):
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
     if not tournament:
-        return jsonify({"error": "Tournament not found"}), 404
+        return jsonify({"detail": "Tournament not found"}), 404
     
     return jsonify(tournament.to_dict()), 200
 
@@ -80,14 +80,14 @@ def add_participant(tournament_id):
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
     if not tournament:
-        return jsonify({"error": "Tournament not found"}), 404
+        return jsonify({"detail": "Tournament not found"}), 404
     
     payload = request.get_json(silent=True) or {}
     user_id = payload.get("user_id")
     name = payload.get("name")
 
     if not name:
-        return jsonify({"error": "Participant name is required"}), 400
+        return jsonify({"detail": "Participant name is required"}), 400
 
     participant = Participant(
         tournament_id=tournament_id,
@@ -107,7 +107,7 @@ def list_participants(tournament_id):
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
     if not tournament:
-        return jsonify({"error": "Tournament not found"}), 404
+        return jsonify({"detail": "Tournament not found"}), 404
     
     participants = Participant.query.filter_by(tournament_id=tournament_id).all()
     return jsonify([p.to_dict() for p in participants]), 200
@@ -119,7 +119,7 @@ def get_brackets(tournament_id):
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
     if not tournament:
-        return jsonify({"error": "Tournament not found"}), 404
+        return jsonify({"detail": "Tournament not found"}), 404
     
     brackets = Bracket.query.filter_by(tournament_id=tournament_id).order_by(Bracket.round, Bracket.match_number).all()
     return jsonify([b.to_dict() for b in brackets]), 200
