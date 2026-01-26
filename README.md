@@ -10,6 +10,42 @@
 
 ---
 
+## Tournament Management Feature
+
+The GYM IT System now includes a comprehensive tournament management feature that allows administrators and trainers to create and manage tournaments with bracket generation.
+
+### Features
+
+- **Tournament Creation**: Create tournaments with customizable names, participant limits, and tournament types
+- **Participant Management**: Add participants to tournaments (supports both registered users and custom names)
+- **Bracket Generation**: Automatic single-elimination bracket generation based on participants
+- **Visual Bracket Display**: Interactive bracket visualization showing matchups and progression
+
+### API Endpoints
+
+- `POST /api/tournaments/` - Create a new tournament (requires trainer/admin role)
+- `GET /api/tournaments/` - List all tournaments
+- `GET /api/tournaments/<id>` - Get a specific tournament
+- `PUT /api/tournaments/<id>/participants` - Add participants to a tournament (requires trainer/admin role)
+- `GET /api/tournaments/<id>/participants` - Get participants for a tournament
+- `GET /api/tournaments/<id>/bracket` - Generate and retrieve the tournament bracket
+
+### Usage
+
+1. Navigate to the Tournaments page from the dashboard
+2. Click "New Tournament" to create a tournament
+3. Fill in the tournament details (name, max participants, tournament type)
+4. After creating, add participants using the "Add Participants" button
+5. Once participants are added, view the generated bracket by clicking "View Bracket"
+
+### Database Models
+
+- **Tournament**: Stores tournament metadata (name, dates, status, type)
+- **Participant**: Stores tournament participants with optional user linkage
+- **Bracket**: Stores match information for bracket progression
+
+---
+
 ## Phase 1: Architecture, Setup & Core Foundations (Week 1)
 **Goal:** Initialize the repo, set up the environment, and establish communication standards.
 
