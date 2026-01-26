@@ -31,6 +31,63 @@ if docker ps -a --format '{{.Names}}' | grep -q "gymit-api\|gymit-db"; then
     echo "✓ Old containers stopped"
 fi
 
+# Check if required ports are available
+echo ""
+echo "Checking port availability..."
+echo ""
+
+ports_in_use=false
+required_ports=(8000 8001 8002 8003 8004)
+
+for port in "${required_ports[@]}"; do
+    if command -v lsof &> /dev/null; then
+        # Use lsof if available (Linux/Mac)
+        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+            echo "⚠ Port $port is in use"
+            process_info=$(lsof -Pi :$port -sTCP:LISTEN 2>/dev/null | tail -n 1)
+            echo "  Process: $process_info"
+            ports_in_use=true
+        fi
+    elif command -v netstat &> /dev/null; then
+        # Fallback to netstat (Windows/Linux)
+        if netstat -tuln 2>/dev/null | grep -q ":$port "; then
+            echo "⚠ Port $port is in use"
+            ports_in_use=true
+        fi
+    elif command -v ss &> /dev/null; then
+        # Another fallback to ss (modern Linux)
+        if ss -tuln 2>/dev/null | grep -q ":$port "; then
+            echo "⚠ Port $port is in use"
+            ports_in_use=true
+        fi
+    fi
+done
+
+if [ "$ports_in_use" = true ]; then
+    echo ""
+    echo "❌ ERROR: Required ports are already in use!"
+    echo ""
+    echo "To fix this, you can:"
+    echo "1. Stop all Docker containers:"
+    echo "   docker stop \$(docker ps -aq)"
+    echo ""
+    echo "2. Find and kill the process using the port (example for port 8000):"
+    echo "   # On Linux/Mac:"
+    echo "   lsof -ti:8000 | xargs kill -9"
+    echo ""
+    echo "   # Or manually find the process:"
+    echo "   lsof -i :8000"
+    echo "   # Then kill it:"
+    echo "   kill -9 <PID>"
+    echo ""
+    echo "3. Or use the stop script first:"
+    echo "   ./scripts/stop-microservices.sh"
+    echo ""
+    exit 1
+fi
+
+echo "✓ All required ports are available"
+
 echo ""
 echo "Starting all microservices..."
 echo ""

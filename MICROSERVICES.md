@@ -322,26 +322,56 @@ The original monolithic application has been split as follows:
 
 ### Port Already Allocated Error
 
-If you see an error like `Bind for 0.0.0.0:8002 failed: port is already allocated`, this means:
+If you see an error like `Bind for 0.0.0.0:8000 failed: port is already allocated`, this means a process is using the required port.
 
-1. **Old monolithic containers are still running**:
+**Quick Fix:**
+
+1. **Stop all Docker containers first**:
    ```bash
-   docker compose -f docker-compose.yml down
+   ./scripts/stop-microservices.sh
    ```
-
-2. **Another service is using the port**:
-   ```bash
-   # Find what's using the port (on Linux/Mac)
-   lsof -i :8002
    
-   # Stop all Docker containers
+   Or manually:
+   ```bash
    docker stop $(docker ps -aq)
    ```
 
-3. **Use the automated script** which handles cleanup:
+2. **Check what's using the port** (Linux/Mac):
+   ```bash
+   # Check port 8000
+   lsof -i :8000
+   
+   # Check all required ports
+   lsof -i :8000 -i :8001 -i :8002 -i :8003 -i :8004
+   ```
+
+3. **Kill the process using the port**:
+   ```bash
+   # Find and kill process on port 8000
+   lsof -ti:8000 | xargs kill -9
+   
+   # Or kill by PID (replace <PID> with actual process ID)
+   kill -9 <PID>
+   ```
+
+4. **Use the updated start script** which now checks ports automatically:
    ```bash
    ./scripts/start-microservices.sh
    ```
+
+**Common Causes:**
+- Old Docker containers still running (run `docker ps -a` to check)
+- Another application using the same port (development server, etc.)
+- Previous failed startup left containers in weird state
+
+**Windows Users:**
+```powershell
+# Check what's using port 8000
+netstat -ano | findstr :8000
+
+# Kill process by PID
+taskkill /PID <PID> /F
+```
 
 ### Orphan Containers Warning
 

@@ -11,6 +11,9 @@ This project has been migrated to a microservices architecture! See the comprehe
 ### Quick Start (Microservices)
 
 ```bash
+# Check system requirements and port availability
+./scripts/diagnose.sh
+
 # Start all microservices
 ./scripts/start-microservices.sh
 
@@ -23,6 +26,8 @@ This project has been migrated to a microservices architecture! See the comprehe
 # Access the application
 # API Gateway: http://localhost:8000
 ```
+
+**Troubleshooting**: If you encounter port conflict errors, run `./scripts/diagnose.sh` to identify which processes are using the required ports, then stop them before starting the microservices.
 
 **Note**: If you were running the old monolithic version, the start script will automatically stop it to avoid port conflicts.
 
