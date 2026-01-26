@@ -3,9 +3,17 @@ import os
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "tournament-service-secret")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-secret-key")
+    
+    # Build DATABASE_URL from components for better security
+    DB_USER = os.getenv("DB_USER", "tournamentuser")
+    DB_PASSWORD = os.getenv("TOURNAMENT_DB_PASSWORD", "tournamentpass")
+    DB_HOST = os.getenv("DB_HOST", "tournament-db")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME", "tournamentdb")
+    
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
-        "postgresql+psycopg2://tournamentuser:tournamentpass@tournament-db:5432/tournamentdb",
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
