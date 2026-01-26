@@ -1,5 +1,38 @@
 # GYM IT System: Project Schedule & Task Distribution
 
+## 🚀 Microservices Architecture
+
+This project has been migrated to a microservices architecture! See the comprehensive documentation:
+
+- **[Microservices Overview](MICROSERVICES.md)** - Complete guide to the microservices architecture
+- **[Architecture Diagrams](ARCHITECTURE.md)** - Detailed system architecture and patterns
+- **[Kubernetes Deployment](K8S_DEPLOYMENT.md)** - Production deployment guide
+
+### Quick Start (Microservices)
+
+```bash
+# Start all microservices
+./scripts/start-microservices.sh
+
+# Test the services
+./scripts/test-microservices.sh
+
+# Access the application
+# API Gateway: http://localhost:8000
+```
+
+### Services
+
+- **API Gateway** (Port 8000) - Entry point and request routing
+- **Auth Service** (Port 8001) - Authentication and JWT generation
+- **User Service** (Port 8002) - User management and profiles
+- **Tournament Service** (Port 8003) - Tournament logic and brackets
+- **Notification Service** (Port 8004) - Real-time notifications via WebSocket
+
+Each service has its own PostgreSQL database and can be scaled independently.
+
+---
+
 ## Team Members & Core Responsibilities
 | Student | Core Domain (Vertical Slice) | Architectural Responsibility |
 | :--- | :--- | :--- |
