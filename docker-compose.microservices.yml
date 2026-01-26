@@ -40,8 +40,9 @@ services:
       - DATABASE_URL=postgresql+psycopg2://authuser:authpass@auth-db:5432/authdb
       - REDIS_URL=redis://redis:6379/0
       - USER_SERVICE_URL=http://user-service:8002
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@gym.it}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@gym.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_NAME=${ADMIN_NAME:-Administrator}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - ENV=${ENV:-development}
     ports:

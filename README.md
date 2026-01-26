@@ -27,6 +27,12 @@ This project has been migrated to a microservices architecture! See the comprehe
 # API Gateway: http://localhost:8000
 ```
 
+**Default Admin Login**:
+- Email: `admin@gym.com`
+- Password: `admin`
+
+The admin account is automatically created on first launch to approve new user registrations.
+
 **Troubleshooting**: If you encounter port conflict errors, run `./scripts/diagnose.sh` to identify which processes are using the required ports, then stop them before starting the microservices.
 
 **Note**: If you were running the old monolithic version, the start script will automatically stop it to avoid port conflicts.

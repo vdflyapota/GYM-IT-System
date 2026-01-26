@@ -123,6 +123,12 @@ docker compose -f docker-compose.yml down
    - Tournament Service: http://localhost:8003
    - Notification Service: http://localhost:8004
 
+4. **Login with default admin account**:
+   - Email: `admin@gym.com`
+   - Password: `admin`
+   
+   This admin account is created automatically on first launch and can approve new user registrations.
+
 ### Environment Variables
 
 Create a `.env` file in the project root:
@@ -132,9 +138,10 @@ Create a `.env` file in the project root:
 SECRET_KEY=your-secret-key-here
 JWT_SECRET_KEY=your-jwt-secret-key-here
 
-# Admin Bootstrap
-ADMIN_EMAIL=admin@gym.it
-ADMIN_PASSWORD=securepassword123
+# Admin Bootstrap (created automatically on first launch)
+ADMIN_EMAIL=admin@gym.com
+ADMIN_PASSWORD=admin
+ADMIN_NAME=Administrator
 
 # Environment
 ENV=development
