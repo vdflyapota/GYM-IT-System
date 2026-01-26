@@ -1,0 +1,83 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tournament-db-pvc
+  namespace: gymit-microservices
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tournament-db
+  namespace: gymit-microservices
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tournament-db
+  template:
+    metadata:
+      labels:
+        app: tournament-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        env:
+        - name: POSTGRES_USER
+          value: "tournamentuser"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: TOURNAMENT_DB_PASSWORD
+        - name: POSTGRES_DB
+          value: "tournamentdb"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: tournament-db-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - tournamentuser
+            - -d
+            - tournamentdb
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - tournamentuser
+            - -d
+            - tournamentdb
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: tournament-db-storage
+        persistentVolumeClaim:
+          claimName: tournament-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tournament-db
+  namespace: gymit-microservices
+spec:
+  selector:
+    app: tournament-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
