@@ -89,26 +89,29 @@ function badgeClass(role) {
 function actionButtons(u) {
   const disabled = u.is_root_admin ? "disabled" : "";
   const approve = `<button class="btn btn-sm btn-success" onclick="approveUser(${u.id})" ${u.is_approved ? "disabled" : ""}>Approve</button>`;
-  const deactivate = `<button class="btn btn-sm btn-outline-warning" onclick="deactivateUser(${u.id})" ${disabled}>Deactivate</button>`;
   const ban = u.is_banned
-    ? `<button class="btn btn-sm btn-outline-secondary" onclick="unbanUser(${u.id})" ${disabled}>Unban</button>`
+    ? `<button class="btn btn-sm btn-outline-secondary" ${disabled} disabled>Banned</button>`
     : `<button class="btn btn-sm btn-outline-danger" onclick="banUser(${u.id})" ${disabled}>Ban</button>`;
   const del = `<button class="btn btn-sm btn-outline-dark" onclick="deleteUser(${u.id})" ${disabled}>Delete</button>`;
-  return [approve, deactivate, ban, del].join(" ");
+  return [approve, ban, del].join(" ");
 }
 
 async function approveUser(userId) {
-  await postJSON("/api/users/approve", { user_id: userId }, "User approved");
+  const res = await authFetch("/api/users/approve", { 
+    method: "PATCH", 
+    body: { user_id: userId } 
+  });
+  await handleResponse(res, "User approved");
 }
-async function deactivateUser(userId) {
-  await postJSON("/api/users/deactivate", { user_id: userId }, "User deactivated");
-}
+
 async function banUser(userId) {
-  await postJSON("/api/users/ban", { user_id: userId }, "User banned");
+  const res = await authFetch("/api/users/ban", { 
+    method: "PATCH", 
+    body: { user_id: userId } 
+  });
+  await handleResponse(res, "User banned");
 }
-async function unbanUser(userId) {
-  await postJSON("/api/users/unban", { user_id: userId }, "User unbanned");
-}
+
 async function deleteUser(userId) {
   const ok = confirm("Are you sure you want to delete this user?");
   if (!ok) return;
