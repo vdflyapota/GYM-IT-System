@@ -81,14 +81,22 @@ async function createTournament() {
     }
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(API_BASE + '/', {
+        // Use authFetch from auth.js if available, otherwise fall back to manual token
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+        
+        const response = await fetchFn(API_BASE + '/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
+            headers: headers,
+            body: typeof authFetch !== 'undefined' ? {
+                name: name,
+                start_date: new Date().toISOString(),
+                max_participants: maxParticipants,
+                tournament_type: tournamentType
+            } : JSON.stringify({
                 name: name,
                 start_date: new Date().toISOString(),
                 max_participants: maxParticipants,
@@ -111,12 +119,27 @@ async function createTournament() {
             // Show success message
             showMessage('Tournament created successfully!', 'success');
         } else {
-            const error = await response.json();
-            alert(error.error || 'Failed to create tournament');
+            let errorMessage = 'Failed to create tournament';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+            } catch (e) {
+                // If response is not JSON, use status text
+                errorMessage = response.statusText || errorMessage;
+            }
+            
+            // Show specific error message based on status
+            if (response.status === 401) {
+                errorMessage = 'Please log in to create tournaments';
+            } else if (response.status === 403) {
+                errorMessage = 'You need trainer or admin privileges to create tournaments';
+            }
+            
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Error creating tournament:', error);
-        alert('Failed to create tournament');
+        alert('Network error: Unable to create tournament. Please check your connection.');
     }
 }
 
@@ -233,14 +256,17 @@ async function addParticipants() {
     const participants = names.map(name => ({ name }));
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/${currentTournament.id}/participants`, {
+        // Use authFetch from auth.js if available, otherwise fall back to manual token
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+        
+        const response = await fetchFn(`${API_BASE}/${currentTournament.id}/participants`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ participants })
+            headers: headers,
+            body: typeof authFetch !== 'undefined' ? { participants } : JSON.stringify({ participants })
         });
 
         if (response.ok) {
@@ -256,12 +282,26 @@ async function addParticipants() {
             
             showMessage('Participants added successfully!', 'success');
         } else {
-            const error = await response.json();
-            alert(error.error || 'Failed to add participants');
+            let errorMessage = 'Failed to add participants';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            
+            // Show specific error message based on status
+            if (response.status === 401) {
+                errorMessage = 'Please log in to add participants';
+            } else if (response.status === 403) {
+                errorMessage = 'You need trainer or admin privileges to add participants';
+            }
+            
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Error adding participants:', error);
-        alert('Failed to add participants');
+        alert('Network error: Unable to add participants. Please check your connection.');
     }
 }
 
@@ -284,12 +324,19 @@ async function viewBracket(tournamentId) {
             const modal = new bootstrap.Modal(document.getElementById('bracketModal'));
             modal.show();
         } else {
-            const error = await response.json();
-            alert(error.error || 'Failed to load bracket');
+            let errorMessage = 'Failed to load bracket';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            
+            alert(errorMessage);
         }
     } catch (error) {
         console.error('Error loading bracket:', error);
-        alert('Failed to load bracket');
+        alert('Network error: Unable to load bracket. Please check your connection.');
     }
 }
 
