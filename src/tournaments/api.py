@@ -59,7 +59,7 @@ def list_tournaments():
 @tournaments_bp.get("/<int:tournament_id>")
 def get_tournament(tournament_id):
     """Get a specific tournament"""
-    tournament = Tournament.query.get(tournament_id)
+    tournament = db.session.get(Tournament, tournament_id)
     if not tournament:
         return {"error": "Tournament not found"}, 404
 
@@ -71,7 +71,7 @@ def get_tournament(tournament_id):
 @require_role("trainer", "admin")
 def assign_participants(tournament_id):
     """Assign participants to a tournament"""
-    tournament = Tournament.query.get(tournament_id)
+    tournament = db.session.get(Tournament, tournament_id)
     if not tournament:
         return {"error": "Tournament not found"}, 404
 
@@ -117,7 +117,7 @@ def assign_participants(tournament_id):
 @tournaments_bp.get("/<int:tournament_id>/participants")
 def get_participants(tournament_id):
     """Get participants for a tournament"""
-    tournament = Tournament.query.get(tournament_id)
+    tournament = db.session.get(Tournament, tournament_id)
     if not tournament:
         return {"error": "Tournament not found"}, 404
 
@@ -127,7 +127,7 @@ def get_participants(tournament_id):
 @tournaments_bp.get("/<int:tournament_id>/bracket")
 def get_bracket(tournament_id):
     """Generate and return the bracket for a tournament"""
-    tournament = Tournament.query.get(tournament_id)
+    tournament = db.session.get(Tournament, tournament_id)
     if not tournament:
         return {"error": "Tournament not found"}, 404
 

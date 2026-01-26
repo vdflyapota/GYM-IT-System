@@ -385,8 +385,37 @@ function showEmptyState() {
  * Show message toast
  */
 function showMessage(message, type = 'info') {
-    // Simple alert for now - could be enhanced with toast notifications
-    console.log(`[${type}] ${message}`);
+    // Create a simple toast notification
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'info'} alert-dismissible fade show`;
+    toast.setAttribute('role', 'alert');
+    toast.style.cssText = 'position: relative; margin-bottom: 10px;';
+    
+    toast.innerHTML = `
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 150);
+    }, 3000);
+}
+
+/**
+ * Create toast container if it doesn't exist
+ */
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;';
+    document.body.appendChild(container);
+    return container;
 }
 
 /**

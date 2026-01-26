@@ -39,7 +39,11 @@ def generate_single_elimination_bracket(participants: List[Any]) -> List[Dict[st
 
     # Calculate number of rounds needed
     num_participants = len(sorted_participants)
-    num_rounds = math.ceil(math.log2(num_participants)) if num_participants > 1 else 1
+    if num_participants == 1:
+        # Single participant is automatically the winner - no matches needed
+        return []
+
+    num_rounds = math.ceil(math.log2(num_participants))
 
     # Calculate total slots needed (next power of 2)
     total_slots = 2**num_rounds

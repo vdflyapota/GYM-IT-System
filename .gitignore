@@ -31,3 +31,7 @@ node_modules/
 
 # Docker
 *.pid
+
+# Database
+*.db
+instance/
