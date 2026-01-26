@@ -7,11 +7,15 @@ from .gateway import get_target_service, proxy_request
 
 def create_app():
     """Create and configure the API Gateway Flask app"""
-    # Serve static files from the main project
-    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    static_dir = os.path.join(root_dir, "static")
+    # Static files are mounted at /app/static in the container (via docker-compose volumes)
+    static_dir = '/app/static'
     
-    app = Flask(__name__, static_folder=static_dir, static_url_path="/")
+    # Fallback for local development outside Docker
+    if not os.path.exists(static_dir):
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        static_dir = os.path.join(root_dir, "static")
+    
+    app = Flask(__name__, static_folder=static_dir, static_url_path="")
     app.config.from_object(Config)
 
     # CORS
@@ -34,12 +38,39 @@ def create_app():
     @app.route("/")
     def index():
         """Serve the main index.html"""
-        return send_from_directory(app.static_folder, "index.html")
+        try:
+            return send_from_directory(app.static_folder, "index.html")
+        except Exception as e:
+            app.logger.error(f"Error serving index.html: {e}")
+            app.logger.error(f"Static folder: {app.static_folder}")
+            return {"error": "Static files not found", "static_folder": app.static_folder}, 404
 
     @app.route("/<path:path>")
     def static_files(path):
-        """Serve static files"""
-        return send_from_directory(app.static_folder, path)
+        """Serve static files (CSS, JS, images, HTML pages, etc.)"""
+        # Don't serve API routes as static files
+        if path.startswith('api/'):
+            return {"error": "Not found"}, 404
+        
+        try:
+            # Try to serve the exact file requested
+            file_path = os.path.join(app.static_folder, path)
+            if os.path.isfile(file_path):
+                return send_from_directory(app.static_folder, path)
+            
+            # If no file extension and not found, try adding .html
+            if '.' not in path:
+                html_path = f"{path}.html"
+                html_file = os.path.join(app.static_folder, html_path)
+                if os.path.isfile(html_file):
+                    return send_from_directory(app.static_folder, html_path)
+            
+            # Not found
+            app.logger.warning(f"Static file not found: {path}")
+            return {"error": "File not found", "path": path}, 404
+        except Exception as e:
+            app.logger.error(f"Error serving static file {path}: {e}")
+            return {"error": "Internal server error"}, 500
 
     return app
 
