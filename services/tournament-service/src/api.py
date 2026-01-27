@@ -60,7 +60,7 @@ def create_tournament():
 def list_tournaments():
     """List all tournaments"""
     tournaments = Tournament.query.all()
-    return jsonify([t.to_dict() for t in tournaments]), 200
+    return jsonify({"tournaments": [t.to_dict() for t in tournaments]}), 200
 
 @tournaments_bp.get("/<int:tournament_id>")
 @jwt_required()

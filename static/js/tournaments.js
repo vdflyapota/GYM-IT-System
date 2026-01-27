@@ -46,11 +46,16 @@ function setupEventListeners() {
  */
 async function loadTournaments() {
     try {
-        const response = await fetch(API_BASE + '/', {
+        // Use authFetch from auth.js if available, otherwise fall back to manual token
+        const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
+        const headers = typeof authFetch !== 'undefined' ? {} : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+        };
+        
+        const response = await fetchFn(API_BASE + '/', {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: headers
         });
 
         if (response.ok) {
@@ -58,7 +63,7 @@ async function loadTournaments() {
             currentTournaments = data.tournaments || [];
             renderTournaments();
         } else {
-            console.error('Failed to load tournaments');
+            console.error('Failed to load tournaments:', response.status, response.statusText);
             showEmptyState();
         }
     } catch (error) {
