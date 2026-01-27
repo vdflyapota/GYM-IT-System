@@ -131,22 +131,39 @@ def add_participants_bulk(tournament_id):
     if not participants_data:
         return jsonify({"detail": "No participants provided"}), 400
     
-    added_participants = []
+    # Validate participant names
     for p_data in participants_data:
-        participant = Participant(
-            tournament_id=tournament_id,
-            user_id=p_data.get("user_id"),
-            name=p_data.get("name"),
-        )
-        db.session.add(participant)
-        added_participants.append(participant)
+        if not p_data.get("name"):
+            return jsonify({"detail": "All participants must have a name"}), 400
     
-    db.session.commit()
+    # Check max participants limit
+    current_count = len(tournament.participants) if tournament.participants else 0
+    new_count = current_count + len(participants_data)
+    if new_count > tournament.max_participants:
+        return jsonify({
+            "detail": f"Cannot add {len(participants_data)} participants. Tournament has {current_count}/{tournament.max_participants} participants."
+        }), 400
     
-    return jsonify({
-        "message": f"{len(added_participants)} participants added successfully",
-        "participants": [p.to_dict() for p in added_participants]
-    }), 200
+    try:
+        added_participants = []
+        for p_data in participants_data:
+            participant = Participant(
+                tournament_id=tournament_id,
+                user_id=p_data.get("user_id"),
+                name=p_data.get("name"),
+            )
+            db.session.add(participant)
+            added_participants.append(participant)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"{len(added_participants)} participants added successfully",
+            "participants": [p.to_dict() for p in added_participants]
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"detail": f"Failed to add participants: {str(e)}"}), 500
 
 @tournaments_bp.get("/available-users")
 @jwt_required()
@@ -199,6 +216,10 @@ def record_result(tournament_id, bracket_id):
     if not bracket:
         return jsonify({"detail": "Match not found"}), 404
     
+    # Validate both participants are assigned
+    if not bracket.participant1_id or not bracket.participant2_id:
+        return jsonify({"detail": "Cannot record result: both participants must be assigned"}), 400
+    
     payload = request.get_json(silent=True) or {}
     winner_id = payload.get("winner_id")
     score = payload.get("score")
@@ -210,16 +231,20 @@ def record_result(tournament_id, bracket_id):
     if winner_id not in [bracket.participant1_id, bracket.participant2_id]:
         return jsonify({"detail": "Winner must be one of the match participants"}), 400
     
-    bracket.winner_id = winner_id
-    if score:
-        bracket.score = score
-    
-    db.session.commit()
-    
-    return jsonify({
-        "message": "Match result recorded successfully",
-        "bracket": bracket.to_dict()
-    }), 200
+    try:
+        bracket.winner_id = winner_id
+        if score:
+            bracket.score = score
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Match result recorded successfully",
+            "bracket": bracket.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"detail": f"Failed to record result: {str(e)}"}), 500
 
 @tournaments_bp.get("/health")
 def health():
