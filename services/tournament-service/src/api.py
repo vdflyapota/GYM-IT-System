@@ -112,6 +112,50 @@ def list_participants(tournament_id):
     participants = Participant.query.filter_by(tournament_id=tournament_id).all()
     return jsonify([p.to_dict() for p in participants]), 200
 
+@tournaments_bp.put("/<int:tournament_id>/participants")
+@jwt_required()
+def add_participants_bulk(tournament_id):
+    """Add multiple participants to tournament"""
+    error = require_trainer_or_admin()
+    if error:
+        return error
+    
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    payload = request.get_json(silent=True) or {}
+    participants_data = payload.get("participants", [])
+    
+    if not participants_data:
+        return jsonify({"detail": "No participants provided"}), 400
+    
+    added_participants = []
+    for p_data in participants_data:
+        participant = Participant(
+            tournament_id=tournament_id,
+            user_id=p_data.get("user_id"),
+            name=p_data.get("name"),
+        )
+        db.session.add(participant)
+        added_participants.append(participant)
+    
+    db.session.commit()
+    
+    return jsonify({
+        "message": f"{len(added_participants)} participants added successfully",
+        "participants": [p.to_dict() for p in added_participants]
+    }), 200
+
+@tournaments_bp.get("/available-users")
+@jwt_required()
+def get_available_users():
+    """Get list of available users (mock endpoint for now)"""
+    # This is a placeholder - in a real system, this would query the user service
+    # For now, return empty list as users should be in a separate service
+    return jsonify({"users": []}), 200
+
 @tournaments_bp.get("/<int:tournament_id>/brackets")
 @jwt_required()
 def get_brackets(tournament_id):
@@ -123,6 +167,59 @@ def get_brackets(tournament_id):
     
     brackets = Bracket.query.filter_by(tournament_id=tournament_id).order_by(Bracket.round, Bracket.match_number).all()
     return jsonify([b.to_dict() for b in brackets]), 200
+
+@tournaments_bp.get("/<int:tournament_id>/bracket")
+@jwt_required()
+def get_bracket(tournament_id):
+    """Get tournament bracket (alias for /brackets endpoint)"""
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    brackets = Bracket.query.filter_by(tournament_id=tournament_id).order_by(Bracket.round, Bracket.match_number).all()
+    participants = Participant.query.filter_by(tournament_id=tournament_id).all()
+    
+    return jsonify({
+        "tournament": tournament.to_dict(),
+        "bracket": [b.to_dict() for b in brackets],
+        "participants": [p.to_dict() for p in participants]
+    }), 200
+
+@tournaments_bp.put("/<int:tournament_id>/bracket/<int:bracket_id>/result")
+@jwt_required()
+def record_result(tournament_id, bracket_id):
+    """Record match result"""
+    error = require_trainer_or_admin()
+    if error:
+        return error
+    
+    bracket = Bracket.query.filter_by(id=bracket_id, tournament_id=tournament_id).first()
+    
+    if not bracket:
+        return jsonify({"detail": "Match not found"}), 404
+    
+    payload = request.get_json(silent=True) or {}
+    winner_id = payload.get("winner_id")
+    score = payload.get("score")
+    
+    if not winner_id:
+        return jsonify({"detail": "Winner ID is required"}), 400
+    
+    # Validate winner is one of the participants
+    if winner_id not in [bracket.participant1_id, bracket.participant2_id]:
+        return jsonify({"detail": "Winner must be one of the match participants"}), 400
+    
+    bracket.winner_id = winner_id
+    if score:
+        bracket.score = score
+    
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Match result recorded successfully",
+        "bracket": bracket.to_dict()
+    }), 200
 
 @tournaments_bp.get("/health")
 def health():
