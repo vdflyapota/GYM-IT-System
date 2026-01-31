@@ -79,6 +79,12 @@
   </div>
 
   <script src="/js/auth.js"></script>
+  <script>
+    // Redirect guests to login
+    if (!requireAuth()) {
+        // requireAuth will redirect to /login.html
+    }
+  </script>
   <script src="/js/admin.js"></script>
 </body>
 </html>

@@ -772,7 +772,13 @@ async function renderBracket(tournament, bracket) {
                     ${escapeHtml(p2Name)}
                 </div>
                 ${match.score ? `<div class="text-center small text-muted mt-1">${escapeHtml(match.score)}</div>` : ''}
-                ${(canRecordResult && canRecordAsRole) ? `<button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="openResultModal(${tournament.id}, ${match.id}, ${JSON.stringify(match.participant1).replace(/"/g, '&quot;')}, ${JSON.stringify(match.participant2).replace(/"/g, '&quot;')})">
+                ${(canRecordResult && canRecordAsRole) ? `<button class="btn btn-sm btn-outline-primary mt-2 w-100 record-result-btn" 
+                    data-tournament-id="${tournament.id}" 
+                    data-bracket-id="${match.id}"
+                    data-p1-id="${match.participant1?.id || 0}"
+                    data-p1-name="${escapeHtml(match.participant1?.name || '')}"
+                    data-p2-id="${match.participant2?.id || 0}"
+                    data-p2-name="${escapeHtml(match.participant2?.name || '')}">
                     <i class="fas fa-trophy"></i> Record Result
                 </button>` : ''}
                 ${isDecided ? `<div class="text-center small text-success mt-1"><i class="fas fa-check-circle"></i> Winner: ${escapeHtml(winner)}</div>` : ''}
@@ -790,6 +796,23 @@ async function renderBracket(tournament, bracket) {
     html += '</div>';
 
     container.innerHTML = html;
+    
+    // Add event delegation for Record Result buttons
+    container.querySelectorAll('.record-result-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tournamentId = parseInt(this.dataset.tournamentId);
+            const bracketId = parseInt(this.dataset.bracketId);
+            const participant1 = {
+                id: parseInt(this.dataset.p1Id),
+                name: this.dataset.p1Name
+            };
+            const participant2 = {
+                id: parseInt(this.dataset.p2Id),
+                name: this.dataset.p2Name
+            };
+            openResultModal(tournamentId, bracketId, participant1, participant2);
+        });
+    });
 }
 
 /**
