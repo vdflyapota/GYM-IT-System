@@ -692,7 +692,7 @@ async function viewBracket(tournamentId) {
 
         if (response.ok) {
             const data = await response.json();
-            renderBracket(data.tournament, data.bracket);
+            await renderBracket(data.tournament, data.bracket);
             
             const modal = new bootstrap.Modal(document.getElementById('bracketModal'));
             modal.show();
@@ -716,9 +716,14 @@ async function viewBracket(tournamentId) {
 /**
  * Render bracket visualization
  */
-function renderBracket(tournament, bracket) {
+async function renderBracket(tournament, bracket) {
     const container = document.getElementById('bracketContainer');
     if (!container) return;
+
+    // Ensure userRole is set
+    if (!userRole) {
+        userRole = await getUserRole();
+    }
 
     // Set tournament name in modal
     const title = document.querySelector('#bracketModal .modal-title');
@@ -755,6 +760,8 @@ function renderBracket(tournament, bracket) {
             
             // Only trainers and admins can record match results
             const canRecordAsRole = (userRole === 'admin' || userRole === 'trainer');
+            
+            console.log('Match:', match.id, 'userRole:', userRole, 'canRecordResult:', canRecordResult, 'canRecordAsRole:', canRecordAsRole);
 
             html += `<div class="bracket-match border rounded p-2 bg-white shadow-sm" style="min-width: 200px;">
                 <div class="match-participant ${match.winner_id === match.participant1?.id ? 'fw-bold text-success' : ''}">
