@@ -154,3 +154,19 @@ Example response:
 > ```
 > 
 > This will check the system’s response time, error rate, and database performance under load.
+
+
+# Notification Service
+
+This microservice is responsible for sending notifications when important system events occur,
+such as when a tournament match starts.
+
+## Features
+- REST API for triggering notifications
+- Simulated email / alert notification
+- Lightweight and scalable microservice design
+
+## Run locally
+```bash
+pip install -r requirements.txt
+uvicorn app:app --reload --port 8004
