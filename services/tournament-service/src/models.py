@@ -91,6 +91,7 @@ class Bracket(db.Model):
             "match_number": self.match_number,
             "participant1": self.participant1.to_dict() if self.participant1 else None,
             "participant2": self.participant2.to_dict() if self.participant2 else None,
+            "winner_id": self.winner_id,
             "winner": self.winner.to_dict() if self.winner else None,
             "score": self.score,
             "created_at": self.created_at.isoformat() if self.created_at else None,
