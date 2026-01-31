@@ -56,11 +56,12 @@ function setupRoleBasedUI() {
     
     // Only admin and trainer can create tournaments
     // Members cannot see the "New Tournament" button
-    if (userRole === 'member' && newTournamentBtn) {
-        newTournamentBtn.style.display = 'none';
-    } else if ((userRole === 'admin' || userRole === 'trainer') && newTournamentBtn) {
-        newTournamentBtn.style.display = 'inline-block';
+    if (userRole === 'admin' || userRole === 'trainer') {
+        if (newTournamentBtn) {
+            newTournamentBtn.classList.remove('d-none');
+        }
     }
+    // For members, button stays hidden (default d-none in HTML)
 }
 
 /**
@@ -227,6 +228,9 @@ function createTournamentCard(tournament) {
     
     // Only trainers and admins can add participants
     const canAddParticipants = (userRole === 'admin' || userRole === 'trainer') && !isFull;
+    
+    // Members can request to join (if tournament is not full and in setup status)
+    const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup';
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0">
@@ -246,6 +250,11 @@ function createTournamentCard(tournament) {
                     ${canAddParticipants ? `
                         <button class="btn btn-primary btn-sm" onclick="openParticipantModal(${tournament.id})">
                             <i class="fas fa-user-plus"></i> Add Participants
+                        </button>
+                    ` : ''}
+                    ${canRequestJoin ? `
+                        <button class="btn btn-success btn-sm" onclick="requestToJoin(${tournament.id})">
+                            <i class="fas fa-hand-paper"></i> Request to Join
                         </button>
                     ` : ''}
                     ${tournament.participant_count > 0 ? `
@@ -463,6 +472,57 @@ async function addParticipants() {
     } catch (error) {
         console.error('Error adding participants:', error);
         alert('Network error: Unable to add participants. Please check your connection.');
+    }
+}
+
+/**
+ * Request to join a tournament (for members)
+ */
+async function requestToJoin(tournamentId) {
+    try {
+        const res = await authFetch('/api/users/me');
+        if (!res.ok) {
+            alert('Please log in to request to join a tournament');
+            return;
+        }
+        
+        const me = await res.json();
+        const myName = me.full_name || me.email || 'Unknown';
+        
+        const confirmed = confirm(`Request to join this tournament as "${myName}"?\n\nYour request will need to be approved by a trainer or admin.`);
+        if (!confirmed) return;
+        
+        const response = await authFetch(`${API_BASE}/${tournamentId}/participants`, {
+            method: 'PUT',
+            body: {
+                participants: [{ 
+                    user_id: me.id,
+                    name: myName 
+                }]
+            }
+        });
+        
+        if (response.ok) {
+            await loadTournaments();
+            showMessage('Join request submitted successfully! Waiting for approval.', 'success');
+        } else {
+            let errorMessage = 'Failed to submit join request';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            
+            if (response.status === 403) {
+                errorMessage = 'You do not have permission to join this tournament directly. Please contact a trainer or admin.';
+            }
+            
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error requesting to join tournament:', error);
+        alert('Network error: Unable to submit join request. Please check your connection.');
     }
 }
 
