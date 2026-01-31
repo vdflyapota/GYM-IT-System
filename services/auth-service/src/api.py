@@ -69,6 +69,72 @@ def register():
         "user": {"email": user.email, "role": user.role, "is_approved": user.is_approved}
     }), 201
 
+@auth_bp.post("/create_admin")
+@jwt_required()
+def create_admin():
+    """Create a new admin user - admin only"""
+    from flask_jwt_extended import get_jwt
+    
+    # Check if current user is admin
+    claims = get_jwt()
+    current_role = claims.get("role", "member")
+    if current_role != "admin":
+        return jsonify({"detail": "Admin access required"}), 403
+    
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    full_name = (data.get("full_name") or "").strip()
+
+    if not email or not password or not full_name:
+        return jsonify({"detail": "Missing required fields"}), 400
+
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        return jsonify({"detail": "Email already registered"}), 409
+
+    # Create admin user in auth database
+    user = User(
+        email=email,
+        password_hash=generate_password_hash(password),
+        role="admin",
+        is_active=True,
+        is_approved=True,  # Admins are auto-approved
+        is_banned=False,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Notify user-service to create user profile
+    try:
+        user_service_url = Config.USER_SERVICE_URL
+        response = requests.post(
+            f"{user_service_url}/api/users/create",
+            json={
+                "user_id": user.id,
+                "email": email,
+                "full_name": full_name,
+                "role": "admin",
+                "is_approved": True,
+            },
+            timeout=5
+        )
+        if response.status_code != 201:
+            # Rollback auth user if user-service fails
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({"detail": "Failed to create admin user profile"}), 500
+    except Exception as e:
+        # Rollback on failure
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"detail": f"User service unavailable: {str(e)}"}), 503
+
+    return jsonify({
+        "detail": "Admin created successfully",
+        "user": {"id": user.id, "email": user.email, "role": user.role}
+    }), 201
+
 @auth_bp.post("/login")
 def login():
     """Login and generate JWT token"""

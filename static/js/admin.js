@@ -15,7 +15,7 @@ function wireCreateAdminForm() {
     const full_name = document.getElementById("newAdminName").value.trim();
     const password = document.getElementById("newAdminPassword").value;
     try {
-      const res = await authFetch("/api/users/create_admin", {
+      const res = await authFetch("/api/auth/create_admin", {
         method: "POST",
         body: { email, full_name, password },
       });
