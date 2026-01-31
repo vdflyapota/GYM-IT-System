@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from datetime import datetime
 from .models import db, Tournament, Participant, Bracket
 
@@ -9,6 +9,11 @@ def get_current_user_role():
     """Helper to get current user role from JWT"""
     claims = get_jwt()
     return claims.get("role", "member")
+
+def get_current_user_id():
+    """Helper to get current user ID from JWT"""
+    claims = get_jwt()
+    return claims.get("sub") or claims.get("user_id")
 
 def require_trainer_or_admin():
     """Helper to check if current user is trainer or admin"""
@@ -115,10 +120,13 @@ def list_participants(tournament_id):
 @tournaments_bp.put("/<int:tournament_id>/participants")
 @jwt_required()
 def add_participants_bulk(tournament_id):
-    """Add multiple participants to tournament"""
-    error = require_trainer_or_admin()
-    if error:
-        return error
+    """Add multiple participants to tournament
+    
+    Trainers/admins can add any participants.
+    Members can only add themselves.
+    """
+    role = get_current_user_role()
+    current_user_id = get_current_user_id()
     
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
@@ -136,6 +144,21 @@ def add_participants_bulk(tournament_id):
         if not p_data.get("name"):
             return jsonify({"detail": "All participants must have a name"}), 400
     
+    # Check authorization based on role
+    if role == "member":
+        # Members can only add themselves
+        if len(participants_data) > 1:
+            return jsonify({"detail": "Members can only add themselves to tournaments"}), 403
+        
+        participant_data = participants_data[0]
+        participant_user_id = participant_data.get("user_id")
+        
+        # Verify they're adding themselves
+        if participant_user_id and str(participant_user_id) != str(current_user_id):
+            return jsonify({"detail": "Members can only add themselves to tournaments"}), 403
+    elif role not in ["trainer", "admin"]:
+        return jsonify({"detail": "Unauthorized to add participants"}), 403
+    
     # Check max participants limit
     current_count = len(tournament.participants) if tournament.participants else 0
     new_count = current_count + len(participants_data)
@@ -147,6 +170,16 @@ def add_participants_bulk(tournament_id):
     try:
         added_participants = []
         for p_data in participants_data:
+            # Check if user is already a participant
+            user_id = p_data.get("user_id")
+            if user_id:
+                existing = Participant.query.filter_by(
+                    tournament_id=tournament_id,
+                    user_id=user_id
+                ).first()
+                if existing:
+                    return jsonify({"detail": f"User is already a participant in this tournament"}), 400
+            
             participant = Participant(
                 tournament_id=tournament_id,
                 user_id=p_data.get("user_id"),
