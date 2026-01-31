@@ -9,13 +9,58 @@ const API_BASE = '/api/tournaments';
 // State management
 let currentTournaments = [];
 let currentTournament = null;
+let userRole = null;
 
 /**
  * Initialize the tournaments page
  */
 async function initTournaments() {
+    // Get user role first
+    userRole = await getUserRole();
+    
+    // Setup UI based on role
+    setupRoleBasedUI();
+    
     await loadTournaments();
     setupEventListeners();
+}
+
+/**
+ * Get current user's role
+ */
+async function getUserRole() {
+    try {
+        // First try from auth.js helper
+        if (typeof getRole === 'function') {
+            const role = getRole();
+            if (role) return role;
+        }
+        
+        // Fallback: fetch from API
+        const res = await authFetch('/api/users/me');
+        if (res.ok) {
+            const me = await res.json();
+            return me.role || 'member';
+        }
+    } catch (e) {
+        console.warn('Could not determine user role:', e);
+    }
+    return 'member'; // default to member
+}
+
+/**
+ * Setup UI elements based on user role
+ */
+function setupRoleBasedUI() {
+    const newTournamentBtn = document.getElementById('newTournamentBtn');
+    
+    // Only admin and trainer can create tournaments
+    // Members cannot see the "New Tournament" button
+    if (userRole === 'member' && newTournamentBtn) {
+        newTournamentBtn.style.display = 'none';
+    } else if ((userRole === 'admin' || userRole === 'trainer') && newTournamentBtn) {
+        newTournamentBtn.style.display = 'inline-block';
+    }
 }
 
 /**
@@ -179,6 +224,9 @@ function createTournamentCard(tournament) {
     const statusBadge = getStatusBadge(tournament.status);
     const participantText = `${tournament.participant_count}/${tournament.max_participants}`;
     const isFull = tournament.participant_count >= tournament.max_participants;
+    
+    // Only trainers and admins can add participants
+    const canAddParticipants = (userRole === 'admin' || userRole === 'trainer') && !isFull;
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0">
@@ -195,7 +243,7 @@ function createTournamentCard(tournament) {
                     ${tournament.max_participants} Participants
                 </p>
                 <div class="d-grid gap-2 mt-4">
-                    ${!isFull ? `
+                    ${canAddParticipants ? `
                         <button class="btn btn-primary btn-sm" onclick="openParticipantModal(${tournament.id})">
                             <i class="fas fa-user-plus"></i> Add Participants
                         </button>
@@ -492,6 +540,9 @@ function renderBracket(tournament, bracket) {
             const isDecided = match.winner_id !== null;
             const canRecordResult = match.participant1 && match.participant2 && !isDecided;
             const winner = isDecided ? (match.winner?.name || '') : null;
+            
+            // Only trainers and admins can record match results
+            const canRecordAsRole = (userRole === 'admin' || userRole === 'trainer');
 
             html += `<div class="bracket-match border rounded p-2 bg-white shadow-sm" style="min-width: 200px;">
                 <div class="match-participant ${match.winner_id === match.participant1?.id ? 'fw-bold text-success' : ''}">
@@ -502,7 +553,7 @@ function renderBracket(tournament, bracket) {
                     ${escapeHtml(p2Name)}
                 </div>
                 ${match.score ? `<div class="text-center small text-muted mt-1">${escapeHtml(match.score)}</div>` : ''}
-                ${canRecordResult ? `<button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="openResultModal(${tournament.id}, ${match.id}, ${JSON.stringify(match.participant1).replace(/"/g, '&quot;')}, ${JSON.stringify(match.participant2).replace(/"/g, '&quot;')})">
+                ${(canRecordResult && canRecordAsRole) ? `<button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="openResultModal(${tournament.id}, ${match.id}, ${JSON.stringify(match.participant1).replace(/"/g, '&quot;')}, ${JSON.stringify(match.participant2).replace(/"/g, '&quot;')})">
                     <i class="fas fa-trophy"></i> Record Result
                 </button>` : ''}
                 ${isDecided ? `<div class="text-center small text-success mt-1"><i class="fas fa-check-circle"></i> Winner: ${escapeHtml(winner)}</div>` : ''}

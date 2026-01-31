@@ -13,20 +13,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   const role = getRole();
   if (roleBadge) roleBadge.textContent = role || "guest";
 
-  if (role === "admin" && adminLink) {
-    adminLink.classList.remove("d-none");
-  }
-
   // Try to load the current user info for display
   try {
     const res = await authFetch("/api/users/me");
     if (res.ok) {
       const me = await res.json();
       if (userDisplay) userDisplay.textContent = me.full_name || me.email || "Unknown";
-      if (roleBadge) roleBadge.textContent = me.role || role || "member";
+      const userRole = me.role || role || "member";
+      if (roleBadge) roleBadge.textContent = userRole;
+      
+      // Only show Admin Panel button for admin users (not for trainers or members)
+      if (userRole === "admin" && adminLink) {
+        adminLink.classList.remove("d-none");
+      }
+    } else {
+      // Fallback to role from token
+      if (role === "admin" && adminLink) {
+        adminLink.classList.remove("d-none");
+      }
     }
   } catch (e) {
-    // Not logged in or request failed; leave defaults
+    // Not logged in or request failed; use role from token
     console.warn("Could not load /api/users/me", e);
+    if (role === "admin" && adminLink) {
+      adminLink.classList.remove("d-none");
+    }
   }
 });
