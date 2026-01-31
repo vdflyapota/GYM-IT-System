@@ -47,18 +47,24 @@ def create_tournament():
     except (ValueError, AttributeError):
         return jsonify({"detail": "Invalid start date format"}), 400
 
-    tournament = Tournament(
-        name=name,
-        start_date=start_dt,
-        max_participants=max_participants,
-        tournament_type=tournament_type,
-        status="setup",
-    )
+    try:
+        tournament = Tournament(
+            name=name,
+            start_date=start_dt,
+            max_participants=max_participants,
+            tournament_type=tournament_type,
+            status="setup",
+        )
 
-    db.session.add(tournament)
-    db.session.commit()
+        db.session.add(tournament)
+        db.session.commit()
 
-    return jsonify({"tournament": tournament.to_dict(), "message": "Tournament created successfully"}), 201
+        return jsonify({"tournament": tournament.to_dict(), "message": "Tournament created successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Error creating tournament: {str(e)}")
+        return jsonify({"detail": f"Failed to create tournament: {str(e)}"}), 500
 
 @tournaments_bp.get("/")
 @jwt_required()
