@@ -84,6 +84,31 @@ def get_tournament(tournament_id):
     
     return jsonify(tournament.to_dict()), 200
 
+@tournaments_bp.delete("/<int:tournament_id>")
+@jwt_required()
+def delete_tournament(tournament_id):
+    """Delete a tournament - admin or trainer only"""
+    error = require_trainer_or_admin()
+    if error:
+        return error
+    
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    try:
+        # Cascade delete will automatically remove participants and brackets
+        db.session.delete(tournament)
+        db.session.commit()
+        
+        return jsonify({"message": "Tournament deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Error deleting tournament: {str(e)}")
+        return jsonify({"detail": f"Failed to delete tournament: {str(e)}"}), 500
+
 @tournaments_bp.post("/<int:tournament_id>/participants")
 @jwt_required()
 def add_participant(tournament_id):

@@ -234,6 +234,9 @@ function createTournamentCard(tournament) {
     
     // Trainers and admins can generate bracket when status is setup
     const canGenerateBracket = (userRole === 'admin' || userRole === 'trainer') && tournament.status === 'setup' && tournament.participant_count >= 2;
+    
+    // Trainers and admins can delete tournaments
+    const canDelete = (userRole === 'admin' || userRole === 'trainer');
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0">
@@ -268,6 +271,11 @@ function createTournamentCard(tournament) {
                     ${tournament.participant_count > 0 ? `
                         <button class="btn btn-outline-dark btn-sm" onclick="viewBracket(${tournament.id})">
                             <i class="fas fa-sitemap"></i> View Bracket
+                        </button>
+                    ` : ''}
+                    ${canDelete ? `
+                        <button class="btn btn-danger btn-sm" onclick="deleteTournament(${tournament.id}, '${escapeHtml(tournament.name)}')">
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                     ` : ''}
                 </div>
@@ -603,6 +611,39 @@ async function requestToJoin(tournamentId) {
     } catch (error) {
         console.error('Error requesting to join tournament:', error);
         alert('Network error: Unable to submit join request. Please check your connection.');
+    }
+}
+
+/**
+ * Delete a tournament
+ */
+async function deleteTournament(tournamentId, tournamentName) {
+    // Confirm deletion
+    const confirmed = confirm(`Are you sure you want to delete the tournament "${tournamentName}"?\n\nThis will permanently delete:\n- The tournament\n- All participants\n- All bracket matches\n\nThis action cannot be undone.`);
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showMessage('Tournament deleted successfully!', 'success');
+            await loadTournaments();
+        } else {
+            let errorMessage = 'Failed to delete tournament';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error deleting tournament:', error);
+        alert('Network error: Unable to delete tournament. Please check your connection.');
     }
 }
 
