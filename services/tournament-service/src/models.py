@@ -20,7 +20,8 @@ class Tournament(db.Model):
 
     def to_dict(self):
         # Count only approved participants
-        approved_count = sum(1 for p in self.participants if p.status == "approved") if self.participants else 0
+        # Use getattr to safely handle cases where status column might not exist yet
+        approved_count = sum(1 for p in self.participants if getattr(p, 'status', 'approved') == "approved") if self.participants else 0
         return {
             "id": self.id,
             "name": self.name,
@@ -53,7 +54,7 @@ class Participant(db.Model):
             "user_id": self.user_id,
             "name": self.name,
             "seed": self.seed,
-            "status": self.status,
+            "status": getattr(self, 'status', 'approved'),  # Default to 'approved' if column doesn't exist
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
