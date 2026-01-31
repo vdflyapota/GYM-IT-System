@@ -110,7 +110,7 @@ def get_user(user_id):
         "is_banned": user.is_banned,
     }), 200
 
-@users_bp.patch("/approve")
+@users_bp.route("/approve", methods=["PATCH"])
 @jwt_required()
 def approve_user():
     """Approve a user - admin only"""
@@ -146,7 +146,7 @@ def approve_user():
     
     return jsonify({"detail": "User approved", "user_id": user.id}), 200
 
-@users_bp.patch("/ban")
+@users_bp.route("/ban", methods=["PATCH"])
 @jwt_required()
 def ban_user():
     """Ban a user - admin only"""
@@ -186,7 +186,7 @@ def ban_user():
     
     return jsonify({"detail": "User banned", "user_id": user.id}), 200
 
-@users_bp.delete("/<int:user_id>")
+@users_bp.route("/<int:user_id>", methods=["DELETE"])
 @jwt_required()
 def delete_user(user_id):
     """Delete a user - admin only"""
@@ -220,7 +220,7 @@ def delete_user(user_id):
     
     return jsonify({"detail": "User deleted"}), 200
 
-@users_bp.get("/health")
+@users_bp.route("/health", methods=["GET"])
 def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "service": "user-service"}), 200
