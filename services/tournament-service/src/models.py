@@ -19,6 +19,8 @@ class Tournament(db.Model):
     brackets = db.relationship("Bracket", back_populates="tournament", cascade="all, delete-orphan")
 
     def to_dict(self):
+        # Count only approved participants
+        approved_count = sum(1 for p in self.participants if p.status == "approved") if self.participants else 0
         return {
             "id": self.id,
             "name": self.name,
@@ -27,7 +29,7 @@ class Tournament(db.Model):
             "tournament_type": self.tournament_type,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "participant_count": len(self.participants) if self.participants else 0,
+            "participant_count": approved_count,
         }
 
 class Participant(db.Model):

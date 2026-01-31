@@ -297,11 +297,86 @@ async function openParticipantModal(tournamentId) {
     currentTournament = currentTournaments.find(t => t.id === tournamentId);
     if (!currentTournament) return;
 
-    // Load available users
+    // Load pending requests and available users
+    await loadPendingParticipants();
     await loadAvailableUsers();
 
     const modal = new bootstrap.Modal(document.getElementById('participantModal'));
     modal.show();
+}
+
+/**
+ * Load pending participants for tournament
+ */
+async function loadPendingParticipants() {
+    const pendingList = document.getElementById('pendingList');
+    if (!pendingList || !currentTournament) return;
+
+    try {
+        const response = await authFetch(`${API_BASE}/${currentTournament.id}/participants`);
+        
+        if (response.ok) {
+            const participants = await response.json();
+            const pending = participants.filter(p => p.status === 'pending');
+            
+            if (pending.length === 0) {
+                pendingList.innerHTML = '<p class="text-muted">No pending requests</p>';
+                return;
+            }
+
+            pendingList.innerHTML = pending.map(participant => `
+                <div class="card mb-2">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${escapeHtml(participant.name)}</strong>
+                                <small class="text-muted d-block">Requested: ${new Date(participant.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <button class="btn btn-sm btn-success" onclick="approveParticipant(${participant.id})">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            pendingList.innerHTML = '<p class="text-danger">Failed to load pending requests</p>';
+        }
+    } catch (error) {
+        console.error('Error loading pending participants:', error);
+        pendingList.innerHTML = '<p class="text-danger">Error loading pending requests</p>';
+    }
+}
+
+/**
+ * Approve a pending participant
+ */
+async function approveParticipant(participantId) {
+    if (!currentTournament) return;
+    
+    try {
+        const response = await authFetch(`${API_BASE}/${currentTournament.id}/participants/${participantId}/approve`, {
+            method: 'PATCH'
+        });
+        
+        if (response.ok) {
+            showMessage('Participant approved successfully!', 'success');
+            await loadPendingParticipants();
+            await loadTournaments();
+        } else {
+            let errorMessage = 'Failed to approve participant';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error approving participant:', error);
+        alert('Network error: Unable to approve participant. Please check your connection.');
+    }
 }
 
 /**
