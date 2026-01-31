@@ -101,3 +101,31 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        
+        # Migrate existing databases: Add status column to participants if it doesn't exist
+        try:
+            from sqlalchemy import text, inspect
+            
+            inspector = inspect(db.engine)
+            
+            # Check if participants table exists
+            if 'participants' in inspector.get_table_names():
+                # Get existing columns
+                existing_columns = [col['name'] for col in inspector.get_columns('participants')]
+                
+                # Add status column if it doesn't exist
+                if 'status' not in existing_columns:
+                    with db.engine.connect() as conn:
+                        # Use transaction
+                        trans = conn.begin()
+                        try:
+                            conn.execute(text(
+                                "ALTER TABLE participants ADD COLUMN status VARCHAR(50) DEFAULT 'approved' NOT NULL"
+                            ))
+                            trans.commit()
+                            print("✓ Added 'status' column to participants table")
+                        except Exception as e:
+                            trans.rollback()
+                            print(f"Warning: Could not add status column: {e}")
+        except Exception as e:
+            print(f"Warning: Database migration check failed: {e}")
