@@ -87,6 +87,7 @@ def list_users():
             "role": u.role,
             "is_approved": u.is_approved,
             "is_banned": u.is_banned,
+            "is_root_admin": u.is_root_admin,
         }
         for u in users
     ]), 200
@@ -163,6 +164,10 @@ def ban_user():
     if not user:
         return jsonify({"detail": "User not found"}), 404
     
+    # Prevent banning root admin
+    if user.is_root_admin:
+        return jsonify({"detail": "Cannot ban root admin user"}), 403
+    
     user.is_banned = True
     db.session.commit()
     
@@ -180,6 +185,40 @@ def ban_user():
         app.logger.warning(f"Auth service sync failed: {str(e)}")
     
     return jsonify({"detail": "User banned", "user_id": user.id}), 200
+
+@users_bp.delete("/<int:user_id>")
+@jwt_required()
+def delete_user(user_id):
+    """Delete a user - admin only"""
+    error = require_admin()
+    if error:
+        return error
+    
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    # Prevent deleting root admin
+    if user.is_root_admin:
+        return jsonify({"detail": "Cannot delete root admin user"}), 403
+    
+    # Delete the user
+    db.session.delete(user)
+    db.session.commit()
+    
+    # Notify auth-service to delete the auth record
+    try:
+        auth_service_url = Config.AUTH_SERVICE_URL
+        response = requests.delete(
+            f"{auth_service_url}/api/auth/user/{user_id}",
+            timeout=5
+        )
+        if response.status_code not in [200, 204, 404]:
+            app.logger.warning(f"Failed to delete from auth-service: {response.text}")
+    except Exception as e:
+        app.logger.warning(f"Auth service sync failed: {str(e)}")
+    
+    return jsonify({"detail": "User deleted"}), 200
 
 @users_bp.get("/health")
 def health():
