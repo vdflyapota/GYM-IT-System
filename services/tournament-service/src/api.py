@@ -201,10 +201,51 @@ def add_participants_bulk(tournament_id):
 @tournaments_bp.get("/available-users")
 @jwt_required()
 def get_available_users():
-    """Get list of available users (mock endpoint for now)"""
-    # This is a placeholder - in a real system, this would query the user service
-    # For now, return empty list as users should be in a separate service
-    return jsonify({"users": []}), 200
+    """Get list of available users from user-service"""
+    import requests
+    from .config import Config
+    
+    # Only trainers and admins can see available users
+    error = require_trainer_or_admin()
+    if error:
+        return error
+    
+    try:
+        # Fetch users from user-service
+        user_service_url = Config.USER_SERVICE_URL
+        
+        # Get the JWT token from the current request
+        from flask import request as flask_request
+        auth_header = flask_request.headers.get('Authorization', '')
+        
+        response = requests.get(
+            f"{user_service_url}/api/users/",
+            headers={'Authorization': auth_header},
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            users_data = response.json()
+            # Transform user data to match expected format
+            users = [
+                {
+                    "id": user.get("id"),
+                    "name": user.get("full_name") or user.get("email"),
+                    "email": user.get("email")
+                }
+                for user in users_data
+                if user.get("is_approved") and not user.get("is_banned")
+            ]
+            return jsonify({"users": users}), 200
+        else:
+            # Return empty list if user-service fails
+            return jsonify({"users": []}), 200
+            
+    except Exception as e:
+        # Log error but return empty list to not break the UI
+        import logging
+        logging.error(f"Error fetching users from user-service: {str(e)}")
+        return jsonify({"users": []}), 200
 
 @tournaments_bp.get("/<int:tournament_id>/brackets")
 @jwt_required()
