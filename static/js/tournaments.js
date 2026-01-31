@@ -231,6 +231,9 @@ function createTournamentCard(tournament) {
     
     // Members can request to join (if tournament is not full and in setup status)
     const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup';
+    
+    // Trainers and admins can generate bracket when status is setup
+    const canGenerateBracket = (userRole === 'admin' || userRole === 'trainer') && tournament.status === 'setup' && tournament.participant_count >= 2;
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0">
@@ -255,6 +258,11 @@ function createTournamentCard(tournament) {
                     ${canRequestJoin ? `
                         <button class="btn btn-success btn-sm" onclick="requestToJoin(${tournament.id})">
                             <i class="fas fa-hand-paper"></i> Request to Join
+                        </button>
+                    ` : ''}
+                    ${canGenerateBracket ? `
+                        <button class="btn btn-warning btn-sm" onclick="generateBracket(${tournament.id})">
+                            <i class="fas fa-sitemap"></i> Generate Bracket
                         </button>
                     ` : ''}
                     ${tournament.participant_count > 0 ? `
@@ -489,7 +497,7 @@ async function requestToJoin(tournamentId) {
         const me = await res.json();
         const myName = me.full_name || me.email || 'Unknown';
         
-        const confirmed = confirm(`Request to join this tournament as "${myName}"?\n\nYour request will need to be approved by a trainer or admin.`);
+        const confirmed = confirm(`Request to join this tournament as "${myName}"?\n\nYour request will be pending until approved by a trainer or admin.`);
         if (!confirmed) return;
         
         const response = await authFetch(`${API_BASE}/${tournamentId}/participants`, {
@@ -503,8 +511,9 @@ async function requestToJoin(tournamentId) {
         });
         
         if (response.ok) {
+            const data = await response.json();
             await loadTournaments();
-            showMessage('Join request submitted successfully! Waiting for approval.', 'success');
+            showMessage(data.message || 'Join request submitted successfully! Waiting for approval.', 'success');
         } else {
             let errorMessage = 'Failed to submit join request';
             try {
@@ -514,15 +523,44 @@ async function requestToJoin(tournamentId) {
                 errorMessage = response.statusText || errorMessage;
             }
             
-            if (response.status === 403) {
-                errorMessage = 'You do not have permission to join this tournament directly. Please contact a trainer or admin.';
-            }
-            
             alert(errorMessage);
         }
     } catch (error) {
         console.error('Error requesting to join tournament:', error);
         alert('Network error: Unable to submit join request. Please check your connection.');
+    }
+}
+
+/**
+ * Generate tournament bracket
+ */
+async function generateBracket(tournamentId) {
+    if (!confirm('Generate tournament bracket? This will create all matches for the tournament.')) {
+        return;
+    }
+    
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/generate-bracket`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showMessage(data.message || 'Bracket generated successfully!', 'success');
+            await loadTournaments();
+        } else {
+            let errorMessage = 'Failed to generate bracket';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = response.statusText || errorMessage;
+            }
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error generating bracket:', error);
+        alert('Network error: Unable to generate bracket. Please check your connection.');
     }
 }
 

@@ -39,6 +39,7 @@ class Participant(db.Model):
     user_id = db.Column(db.Integer, nullable=True)
     name = db.Column(db.String(255), nullable=False)
     seed = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.String(50), default="approved", nullable=False)  # pending, approved
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     tournament = db.relationship("Tournament", back_populates="participants")
@@ -50,6 +51,7 @@ class Participant(db.Model):
             "user_id": self.user_id,
             "name": self.name,
             "seed": self.seed,
+            "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
