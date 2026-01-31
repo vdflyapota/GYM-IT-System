@@ -110,3 +110,47 @@ This includes database reliability, backups, monitoring, notifications, and syst
 - Recoverability
 - Observability
 - Stability
+
+
+## HealthGYM API Endpoints
+
+### 1. System Summary
+**GET** `/reporting/summary`
+
+Returns:
+- API status
+- Database status
+- Number of users
+- Number of tournaments
+- Number of challenges
+
+Example response:
+```json
+{
+  "api": "up",
+  "database": "up",
+  "users": 1,
+  "tournaments": 2,
+  "challenges": 0
+}
+
+### 2. Health Check
+**GET** `/reporting/healthcheck`
+
+Checks if the API and database are reachable.
+
+Example response:
+```json
+{
+  "api": "up",
+  "database": "up"
+}
+
+
+> Note: Load testing requires the `tests/load_test.js` file. If this file exists, you can run:
+> 
+> ```bash
+> k6 run tests/load_test.js
+> ```
+> 
+> This will check the system’s response time, error rate, and database performance under load.
