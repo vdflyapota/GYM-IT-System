@@ -18,6 +18,13 @@ def require_admin():
         return jsonify({"detail": "Admin access required"}), 403
     return None
 
+def require_admin_or_trainer():
+    """Helper to check if current user is admin or trainer"""
+    role = get_current_user_role()
+    if role not in ["admin", "trainer"]:
+        return jsonify({"detail": "Admin or Trainer access required"}), 403
+    return None
+
 @users_bp.post("/create")
 def create_user():
     """Create user profile - called by auth-service after registration"""
@@ -73,8 +80,8 @@ def get_me():
 @users_bp.get("/")
 @jwt_required()
 def list_users():
-    """List all users - admin only"""
-    error = require_admin()
+    """List all users - admin or trainer"""
+    error = require_admin_or_trainer()
     if error:
         return error
     

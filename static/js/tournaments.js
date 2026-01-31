@@ -531,11 +531,9 @@ async function requestToJoin(tournamentId) {
  */
 async function viewBracket(tournamentId) {
     try {
-        const response = await fetch(`${API_BASE}/${tournamentId}/bracket`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        // Use authFetch to include JWT token
+        const response = await authFetch(`${API_BASE}/${tournamentId}/bracket`, {
+            method: 'GET'
         });
 
         if (response.ok) {
