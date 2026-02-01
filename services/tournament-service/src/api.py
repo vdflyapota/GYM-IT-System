@@ -656,6 +656,106 @@ def clear_result(tournament_id, bracket_id):
         logging.error(f"Error clearing result: {str(e)}")
         return jsonify({"detail": f"Failed to clear result: {str(e)}"}), 500
 
+@tournaments_bp.get("/leaderboard")
+@jwt_required()
+def get_leaderboard():
+    """Get tournament leaderboard with player statistics"""
+    try:
+        # Get user_service URL from environment
+        user_service_url = "http://user-service:5001"
+        
+        # Fetch all users from user-service
+        auth_header = request.headers.get('Authorization')
+        try:
+            response = requests.get(
+                f"{user_service_url}/api/users/",
+                headers={'Authorization': auth_header},
+                timeout=5
+            )
+            
+            if response.status_code != 200:
+                logging.error(f"Failed to fetch users: {response.status_code}")
+                users_data = []
+            else:
+                users_data = response.json().get("users", [])
+        except Exception as e:
+            logging.error(f"Error fetching users from user-service: {str(e)}")
+            users_data = []
+        
+        # Calculate statistics for each user
+        leaderboard_data = []
+        
+        for user in users_data:
+            user_id = user.get("id")
+            
+            # Get all participants for this user
+            participants = Participant.query.filter_by(user_id=user_id, status="approved").all()
+            
+            # Calculate statistics
+            tournaments_played = len(set([p.tournament_id for p in participants]))
+            total_wins = 0
+            total_losses = 0
+            tournament_wins = 0  # Number of tournaments won
+            
+            for participant in participants:
+                # Check if this participant won any matches
+                matches_won = Bracket.query.filter_by(winner_id=participant.id).count()
+                total_wins += matches_won
+                
+                # Check if participant was in any match and didn't win
+                matches_as_p1 = Bracket.query.filter_by(participant1_id=participant.id).all()
+                matches_as_p2 = Bracket.query.filter_by(participant2_id=participant.id).all()
+                
+                total_matches = len(matches_as_p1) + len(matches_as_p2)
+                total_losses = total_matches - matches_won
+                
+                # Check if won the tournament (won the final match)
+                tournament = Tournament.query.get(participant.tournament_id)
+                if tournament and tournament.status == "completed":
+                    # Find the final match (highest round number)
+                    final_match = Bracket.query.filter_by(
+                        tournament_id=tournament.id
+                    ).order_by(Bracket.round.desc(), Bracket.match_number.desc()).first()
+                    
+                    if final_match and final_match.winner_id == participant.id:
+                        tournament_wins += 1
+            
+            # Calculate win rate
+            total_matches = total_wins + total_losses
+            win_rate = (total_wins / total_matches * 100) if total_matches > 0 else 0
+            
+            # Calculate points (you can adjust the scoring system)
+            points = (tournament_wins * 100) + (total_wins * 10)
+            
+            leaderboard_data.append({
+                "user_id": user_id,
+                "user_name": user.get("full_name"),
+                "email": user.get("email"),
+                "role": user.get("role"),
+                "tournaments_played": tournaments_played,
+                "tournament_wins": tournament_wins,
+                "total_wins": total_wins,
+                "total_losses": total_losses,
+                "win_rate": round(win_rate, 1),
+                "points": points
+            })
+        
+        # Sort by points (descending), then by tournament wins, then by total wins
+        leaderboard_data.sort(key=lambda x: (x["points"], x["tournament_wins"], x["total_wins"]), reverse=True)
+        
+        # Add ranks
+        for index, entry in enumerate(leaderboard_data):
+            entry["rank"] = index + 1
+        
+        return jsonify({
+            "leaderboard": leaderboard_data,
+            "total_players": len(leaderboard_data)
+        }), 200
+        
+    except Exception as e:
+        logging.error(f"Error generating leaderboard: {str(e)}")
+        return jsonify({"detail": f"Failed to generate leaderboard: {str(e)}"}), 500
+
 @tournaments_bp.get("/health")
 def health():
     """Health check endpoint"""
