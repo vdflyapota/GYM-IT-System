@@ -1,6 +1,4 @@
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from database import engine, Base
 
 # Import all models
@@ -18,17 +16,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- 1. Register API Routers (Backend Logic) ---
-# These MUST come before the static mount so the API takes priority
+# --- API root: one UI is the React frontend (see README) ---
+@app.get("/")
+def root():
+    return {
+        "message": "HealthGYM API",
+        "docs": "/docs",
+        "frontend": "http://localhost:3000 (run: cd frontend && npm run dev)",
+    }
+
+# --- Register API Routers ---
 app.include_router(auth.router)
 app.include_router(tournaments.router)
 app.include_router(challenges.router)
 app.include_router(notifications.router)
-
-# --- 2. Mount Static Files to Root ("/") ---
-# This "html=True" setting is magic. 
-# It means if you visit "/", it looks for "index.html".
-# If you visit "/register.html", it looks for "register.html".
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
-# Note: We removed the manual @app.get("/") because the mount handles it now.

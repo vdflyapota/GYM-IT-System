@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+
+# Databases (не коммитить локальные БД)
+*.db
+gym.db
+
+# Node / frontend (на случай если node_modules в корне)
+node_modules/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Личные заметки (не коммитить)
+ONBOARDING.md
