@@ -10,6 +10,9 @@ const Tournaments = lazy(() => import('./pages/Tournaments'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Home = lazy(() => import('./pages/Home'))
+const AdminReports = lazy(() => import('./pages/AdminReports'))
+const ClassSchedule = lazy(() => import('./pages/ClassSchedule'))
+const Hiring = lazy(() => import('./pages/Hiring'))
 
 function App() {
   return (
@@ -19,10 +22,13 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/class-schedule" element={<ClassSchedule />} />
+          <Route path="/hiring" element={<Hiring />} />
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
           </Route>
         </Routes>
       </Suspense>
