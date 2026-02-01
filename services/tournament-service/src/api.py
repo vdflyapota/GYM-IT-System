@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from datetime import datetime
 from .models import db, Tournament, Participant, Bracket
+import logging
+import requests
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
@@ -88,7 +90,6 @@ def create_tournament():
         return jsonify({"tournament": tournament.to_dict(), "message": "Tournament created successfully"}), 201
     except Exception as e:
         db.session.rollback()
-        import logging
         logging.error(f"Error creating tournament: {str(e)}")
         return jsonify({"detail": f"Failed to create tournament: {str(e)}"}), 500
 
@@ -131,7 +132,6 @@ def delete_tournament(tournament_id):
         return jsonify({"message": "Tournament deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        import logging
         logging.error(f"Error deleting tournament: {str(e)}")
         return jsonify({"detail": f"Failed to delete tournament: {str(e)}"}), 500
 
@@ -278,7 +278,6 @@ def add_participants_bulk(tournament_id):
 @jwt_required()
 def get_available_users():
     """Get list of available users from user-service"""
-    import requests
     from .config import Config
     
     # Only trainers and admins can see available users
@@ -319,7 +318,6 @@ def get_available_users():
             
     except Exception as e:
         # Log error but return empty list to not break the UI
-        import logging
         logging.error(f"Error fetching users from user-service: {str(e)}")
         return jsonify({"users": []}), 200
 
@@ -567,8 +565,6 @@ def record_result(tournament_id, bracket_id):
 @jwt_required()
 def pause_tournament(tournament_id):
     """Pause a tournament - admin only"""
-    import logging
-    
     error = require_admin()
     if error:
         return error
@@ -595,7 +591,6 @@ def pause_tournament(tournament_id):
 @jwt_required()
 def resume_tournament(tournament_id):
     """Resume a paused tournament - admin only"""
-    import logging
     
     error = require_admin()
     if error:
@@ -619,7 +614,6 @@ def resume_tournament(tournament_id):
 @jwt_required()
 def clear_result(tournament_id, bracket_id):
     """Clear a match result - admin only"""
-    import logging
     
     error = require_admin()
     if error:
