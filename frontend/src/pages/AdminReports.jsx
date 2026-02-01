@@ -20,8 +20,19 @@ export default function AdminReports() {
   });
 
   useEffect(() => {
+    // Safely parse user data
+    let user = {}
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        user = JSON.parse(userStr)
+      }
+    } catch (e) {
+      // If parsing fails, assume not an admin
+      user = {}
+    }
+    
     // Check if user is admin
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (user.role !== 'admin') {
       // Redirect non-admins away
       navigate('/dashboard');

@@ -7,8 +7,18 @@ export default function Hiring() {
   const [userRole, setUserRole] = useState('user');
 
   useEffect(() => {
-    // Get user role from localStorage
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // Safely parse user data
+    let user = {}
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        user = JSON.parse(userStr)
+      }
+    } catch (e) {
+      // If parsing fails, assume regular user
+      user = {}
+    }
+    
     setUserRole(user.role || 'user');
     
     // Admins shouldn't be hiring themselves

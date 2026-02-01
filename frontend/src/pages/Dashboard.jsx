@@ -3,8 +3,19 @@ import { Link } from 'react-router-dom'
 import './Dashboard.css'
 
 function Dashboard() {
-  const userEmail = localStorage.getItem('user') || 'guest@gym.com'
-  const userName = userEmail.split('@')[0]
+  // Safely get user data
+  const getUserData = () => {
+    try {
+      const userStr = localStorage.getItem('user') || '{}'
+      const userData = JSON.parse(userStr)
+      return userData
+    } catch (e) {
+      // If parsing fails, user was stored as plain string (email)
+      return { email: localStorage.getItem('user'), name: 'Guest' }
+    }
+  }
+  const user = getUserData()
+  const userName = user.name || user.email?.split('@')[0] || 'Guest'
 
   return (
     <div className="dashboard-container">
