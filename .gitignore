@@ -49,3 +49,6 @@ ONBOARDING.md
 
 # Legacy: старый HTML-интерфейс (основной UI — frontend/)
 static/
+
+# Пустая/архивная папка
+docs/archive/

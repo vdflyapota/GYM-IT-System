@@ -1,8 +1,12 @@
 # GYM IT System: Project Schedule & Task Distribution
 
+Course project — Software Architecture. Team 4. Stack: Flask/FastAPI, React, Docker, Kubernetes, PostgreSQL.
+
+**Primary way to run:** microservices (see below). Monolith/Simple is optional and requires full root setup.
+
 ## 🚀 Microservices Architecture
 
-This project has been migrated to a microservices architecture! See the comprehensive documentation:
+This project uses a microservices architecture. See the documentation:
 
 - **[Microservices Overview](MICROSERVICES.md)** - Complete guide to the microservices architecture
 - **[Architecture Diagrams](ARCHITECTURE.md)** - Detailed system architecture and patterns
@@ -39,6 +43,8 @@ The admin account is automatically created on first launch to approve new user r
 
 ### Quick Start (Simple / Monolith)
 
+Only if you have `database.py`, `models/`, and `routers/` (auth, tournaments, challenges, notifications) in the repo root. Otherwise use microservices above.
+
 **Prerequisites:** Python 3.8+, Node.js 16+ and npm
 
 **Terminal 1 - Backend:**
@@ -54,10 +60,7 @@ npm install
 npm run dev
 ```
 
-**Access:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+**Access:** Frontend http://localhost:3000 · Backend API http://localhost:8000 · Docs http://localhost:8000/docs
 
 ### Services (Microservices)
 
