@@ -6,6 +6,8 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.local
+.env.*.local
 
 # Testing / coverage
 .pytest_cache/
@@ -20,14 +22,28 @@ build/
 # Logs
 *.log
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
 # OS/IDE
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 
 # Node (if ever used)
 node_modules/
 
 # Docker
 *.pid
+.docker/volumes/
+
+# IDE
+.project
+.pydevproject
+*.iml
