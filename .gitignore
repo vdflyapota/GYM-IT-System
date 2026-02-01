@@ -14,7 +14,7 @@ env/
 *.db
 gym.db
 
-# Node / frontend (на случай если node_modules в корне)
+# Node / frontend
 node_modules/
 
 # IDE / OS
@@ -27,6 +27,22 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+
+# Docker
+*.pid
 
 # Личные заметки (не коммитить)
 ONBOARDING.md

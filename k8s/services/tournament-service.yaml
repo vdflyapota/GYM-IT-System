@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tournament-service
+  namespace: gymit-microservices
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tournament-service
+  template:
+    metadata:
+      labels:
+        app: tournament-service
+    spec:
+      containers:
+      - name: tournament-service
+        image: gymit/tournament-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8003
+        env:
+        - name: TOURNAMENT_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: TOURNAMENT_DB_PASSWORD
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: SECRET_KEY
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: JWT_SECRET_KEY
+        envFrom:
+        - configMapRef:
+            name: gymit-config
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8003
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tournament-service
+  namespace: gymit-microservices
+spec:
+  selector:
+    app: tournament-service
+  ports:
+  - port: 8003
+    targetPort: 8003
+  type: ClusterIP

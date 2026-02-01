@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gymit-microservices
+  labels:
+    name: gymit-microservices
+    environment: production

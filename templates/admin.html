@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HealthGYM | Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { display: none; background-color: #f4f6f9; }
+        /* Distinct Badges for Roles */
+        .badge-role-admin { background-color: #dc3545; color: white; font-size: 0.9em; padding: 8px 12px; }
+        .badge-role-trainer { background-color: #198754; color: white; font-size: 0.9em; padding: 8px 12px; }
+        .badge-role-member { background-color: #6c757d; color: white; font-size: 0.9em; padding: 8px 12px; }
+    </style>
+
+    <script>
+        (function() {
+            const token = localStorage.getItem('token');
+            if (!token) window.location.replace('/login.html');
+            else document.addEventListener("DOMContentLoaded", () => document.body.style.display = 'block');
+        })();
+    </script>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-danger mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/dashboard.html"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <span class="navbar-text text-light fw-bold"><i class="fas fa-user-shield"></i> Admin Control Panel</span>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">User Roles & Privileges</h5>
+            <button class="btn btn-outline-danger btn-sm" onclick="loadUsers()"><i class="fas fa-sync"></i> Refresh Data</button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>User ID</th>
+                            <th>Identity</th>
+                            <th>Current Privilege (Role)</th>
+                            <th>Account Status</th>
+                            <th>Management Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+
+    async function loadUsers() {
+        try {
+            const res = await fetch('/auth/users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) { alert("Access Denied"); return; }
+            
+            const users = await res.json();
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                // 1. VISUALIZE ROLE
+                let roleBadge = '';
+                let icon = '';
+                
+                if (user.role === 'admin') {
+                    roleBadge = `<span class="badge badge-role-admin"><i class="fas fa-shield-alt"></i> ADMIN</span>`;
+                } else if (user.role === 'trainer') {
+                    roleBadge = `<span class="badge badge-role-trainer"><i class="fas fa-dumbbell"></i> TRAINER</span>`;
+                } else {
+                    roleBadge = `<span class="badge badge-role-member"><i class="fas fa-user"></i> MEMBER</span>`;
+                }
+
+                // 2. VISUALIZE STATUS
+                let statusBadge = user.is_active 
+                    ? '<span class="badge bg-success">Active</span>' 
+                    : '<span class="badge bg-warning text-dark">Pending</span>';
+
+                // 3. ACTION BUTTONS (Logic: Show "Make Trainer" only if they are a Member)
+                let promoteBtn = '';
+                if (user.role === 'member') {
+                    promoteBtn = `<button onclick="changeRole(${user.id}, 'trainer')" class="btn btn-sm btn-outline-success">Promote to Trainer</button>`;
+                } else if (user.role === 'trainer') {
+                    promoteBtn = `<button onclick="changeRole(${user.id}, 'member')" class="btn btn-sm btn-outline-secondary">Demote to Member</button>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${user.id}</td>
+                        <td>
+                            <div class="fw-bold">${user.full_name}</div>
+                            <small class="text-muted">${user.email}</small>
+                        </td>
+                        <td>${roleBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                ${promoteBtn}
+                                ${!user.is_active ? `<button onclick="toggleStatus(${user.id}, true)" class="btn btn-sm btn-primary">Approve</button>` : ''}
+                                <button onclick="deleteUser(${user.id})" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function changeRole(id, role) {
+        if(!confirm(`Are you sure you want to change this user's role to ${role.toUpperCase()}?`)) return;
+        await fetch(`/auth/users/${id}/role`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ role: role })
+        });
+        loadUsers();
+    }
+
+    async function toggleStatus(id, status) {
+        await fetch(`/auth/users/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ is_active: status })
+        });
+        loadUsers();
+    }
+    
+    async function deleteUser(id) {
+        if(confirm("Permanently delete this user?")) {
+            await fetch(`/auth/users/${id}`, { method: 'DELETE', headers: {'Authorization': `Bearer ${token}`} });
+            loadUsers();
+        }
+    }
+
+    loadUsers();
+</script>
+</body>
+</html>
