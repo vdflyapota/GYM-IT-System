@@ -681,7 +681,7 @@ def get_leaderboard():
                 logging.error(f"Failed to fetch users: {response.status_code}")
                 users_data = []
             else:
-                users_data = response.json().get("users", [])
+                users_data = response.json()  # User-service returns list directly, not wrapped in object
         except Exception as e:
             logging.error(f"Error fetching users from user-service: {str(e)}")
             users_data = []
