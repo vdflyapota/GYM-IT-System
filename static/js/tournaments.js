@@ -527,7 +527,7 @@ async function addSelectedUsers() {
             let errorMessage = 'Failed to add users';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorData.msg || errorMessage;
             } catch (e) {
                 errorMessage = response.statusText || errorMessage;
             }
