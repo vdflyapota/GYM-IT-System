@@ -123,6 +123,7 @@ async function loadTournaments() {
  */
 async function createTournament() {
     const name = document.getElementById('tName').value;
+    const startDate = document.getElementById('tStartDate').value;
     const deadline = document.getElementById('tDeadline').value;
     const maxParticipants = parseInt(document.getElementById('tMax').value);
     const tournamentType = document.getElementById('tType') ? document.getElementById('tType').value : 'single_elimination';
@@ -132,11 +133,16 @@ async function createTournament() {
         return;
     }
 
+    if (!startDate) {
+        alert('Please select a tournament start date');
+        return;
+    }
+
     try {
         // Prepare request body
         const requestBody = {
             name: name,
-            start_date: new Date().toISOString(),
+            start_date: new Date(startDate).toISOString(),
             max_participants: maxParticipants,
             tournament_type: tournamentType
         };
