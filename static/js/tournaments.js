@@ -1104,10 +1104,8 @@ async function pauseTournament(tournamentId) {
 
         if (response.ok) {
             showToast('Tournament paused successfully', 'success');
-            // Reload bracket view if open
-            if (currentTournamentId === tournamentId) {
-                viewBracket(tournamentId);
-            }
+            // Always reload the bracket to show updated state
+            await viewBracket(tournamentId);
         } else {
             const errorData = await response.json();
             showToast(errorData.detail || 'Failed to pause tournament', 'error');
@@ -1133,10 +1131,8 @@ async function resumeTournament(tournamentId) {
 
         if (response.ok) {
             showToast('Tournament resumed successfully', 'success');
-            // Reload bracket view if open
-            if (currentTournamentId === tournamentId) {
-                viewBracket(tournamentId);
-            }
+            // Always reload the bracket to show updated state
+            await viewBracket(tournamentId);
         } else {
             const errorData = await response.json();
             showToast(errorData.detail || 'Failed to resume tournament', 'error');
