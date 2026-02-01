@@ -50,7 +50,7 @@ def create_tournament():
 
     # Parse and validate registration_deadline if provided
     deadline_dt = None
-    if registration_deadline:
+    if registration_deadline and registration_deadline.strip():  # Check for non-empty string
         try:
             deadline_dt = datetime.fromisoformat(registration_deadline.replace("Z", "+00:00"))
             

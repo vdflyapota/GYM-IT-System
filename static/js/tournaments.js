@@ -177,7 +177,7 @@ async function createTournament() {
             let errorMessage = 'Failed to create tournament';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorData.msg || errorMessage;
             } catch (e) {
                 // If response is not JSON, use status text
                 errorMessage = response.statusText || errorMessage;
