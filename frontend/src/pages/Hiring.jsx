@@ -16,6 +16,8 @@ export default function Hiring() {
       navigate('/admin/reports');
     }
   }, [navigate]);
+
+  const [jobListings] = useState([
     {
       id: 1,
       title: 'Senior Fitness Trainer',
