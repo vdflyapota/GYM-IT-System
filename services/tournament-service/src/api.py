@@ -22,6 +22,13 @@ def require_trainer_or_admin():
         return jsonify({"detail": "Trainer or Admin access required"}), 403
     return None
 
+def require_admin():
+    """Helper to check if current user is admin"""
+    role = get_current_user_role()
+    if role != "admin":
+        return jsonify({"detail": "Admin access required"}), 403
+    return None
+
 @tournaments_bp.post("/")
 @jwt_required()
 def create_tournament():
@@ -555,6 +562,105 @@ def record_result(tournament_id, bracket_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"detail": f"Failed to record result: {str(e)}"}), 500
+
+@tournaments_bp.patch("/<int:tournament_id>/pause")
+@jwt_required()
+def pause_tournament(tournament_id):
+    """Pause a tournament - admin only"""
+    import logging
+    
+    error = require_admin()
+    if error:
+        return error
+    
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    # Don't allow pausing completed tournaments
+    if tournament.status == "completed":
+        return jsonify({"detail": "Cannot pause a completed tournament"}), 400
+    
+    try:
+        tournament.is_paused = True
+        db.session.commit()
+        logging.info(f"Tournament {tournament_id} paused by admin")
+        return jsonify({"message": "Tournament paused successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error pausing tournament: {str(e)}")
+        return jsonify({"detail": f"Failed to pause tournament: {str(e)}"}), 500
+
+@tournaments_bp.patch("/<int:tournament_id>/resume")
+@jwt_required()
+def resume_tournament(tournament_id):
+    """Resume a paused tournament - admin only"""
+    import logging
+    
+    error = require_admin()
+    if error:
+        return error
+    
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    try:
+        tournament.is_paused = False
+        db.session.commit()
+        logging.info(f"Tournament {tournament_id} resumed by admin")
+        return jsonify({"message": "Tournament resumed successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error resuming tournament: {str(e)}")
+        return jsonify({"detail": f"Failed to resume tournament: {str(e)}"}), 500
+
+@tournaments_bp.delete("/<int:tournament_id>/bracket/<int:bracket_id>/result")
+@jwt_required()
+def clear_result(tournament_id, bracket_id):
+    """Clear a match result - admin only"""
+    import logging
+    
+    error = require_admin()
+    if error:
+        return error
+    
+    tournament = Tournament.query.filter_by(id=tournament_id).first()
+    if not tournament:
+        return jsonify({"detail": "Tournament not found"}), 404
+    
+    bracket = Bracket.query.filter_by(id=bracket_id, tournament_id=tournament_id).first()
+    if not bracket:
+        return jsonify({"detail": "Match not found"}), 404
+    
+    try:
+        # If this match had a winner who advanced to next round, clear them from next round
+        if bracket.winner_id:
+            # Find next round match where this winner was placed
+            next_round_matches = Bracket.query.filter_by(
+                tournament_id=tournament_id,
+                round=bracket.round + 1
+            ).all()
+            
+            for next_match in next_round_matches:
+                if next_match.participant1_id == bracket.winner_id:
+                    next_match.participant1_id = None
+                    logging.info(f"Cleared participant1 from match {next_match.id}")
+                elif next_match.participant2_id == bracket.winner_id:
+                    next_match.participant2_id = None
+                    logging.info(f"Cleared participant2 from match {next_match.id}")
+        
+        # Clear the result
+        bracket.winner_id = None
+        bracket.score = None
+        
+        db.session.commit()
+        logging.info(f"Match result cleared for bracket {bracket_id} in tournament {tournament_id}")
+        return jsonify({"message": "Match result cleared successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error clearing result: {str(e)}")
+        return jsonify({"detail": f"Failed to clear result: {str(e)}"}), 500
 
 @tournaments_bp.get("/health")
 def health():
