@@ -785,6 +785,33 @@ async function renderBracket(tournament, bracket) {
         title.textContent = `${tournament.name} - Bracket`;
     }
 
+    // Add pause/resume controls for admins
+    let controlsHtml = '';
+    if (userRole === 'admin') {
+        if (tournament.is_paused) {
+            controlsHtml = `
+                <div class="alert alert-warning mb-3 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-pause-circle"></i> <strong>Tournament is PAUSED</strong> - Results cannot be recorded</span>
+                    <button class="btn btn-sm btn-success" onclick="resumeTournament(${tournament.id})">
+                        <i class="fas fa-play"></i> Resume Tournament
+                    </button>
+                </div>`;
+        } else {
+            controlsHtml = `
+                <div class="mb-3 text-end">
+                    <button class="btn btn-sm btn-warning" onclick="pauseTournament(${tournament.id})">
+                        <i class="fas fa-pause"></i> Pause Tournament
+                    </button>
+                </div>`;
+        }
+    } else if (tournament.is_paused) {
+        // Show info to non-admins
+        controlsHtml = `
+            <div class="alert alert-warning mb-3">
+                <i class="fas fa-pause-circle"></i> <strong>Tournament is currently paused</strong>
+            </div>`;
+    }
+
     // Group brackets by round
     const rounds = {};
     bracket.forEach(match => {
@@ -795,7 +822,7 @@ async function renderBracket(tournament, bracket) {
     });
 
     // Build bracket HTML
-    let html = '<div class="bracket-container d-flex justify-content-around align-items-center gap-4" style="overflow-x: auto; min-height: 400px;">';
+    let html = controlsHtml + '<div class="bracket-container d-flex justify-content-around align-items-center gap-4" style="overflow-x: auto; min-height: 400px;">';
 
     Object.keys(rounds).sort((a, b) => parseInt(a) - parseInt(b)).forEach(roundNum => {
         const matches = rounds[roundNum];
@@ -809,11 +836,15 @@ async function renderBracket(tournament, bracket) {
             const p1Name = match.participant1 ? match.participant1.name : 'TBD';
             const p2Name = match.participant2 ? match.participant2.name : 'TBD';
             const isDecided = match.winner_id !== null;
-            const canRecordResult = match.participant1 && match.participant2 && !isDecided;
+            const canRecordResult = match.participant1 && match.participant2 && !isDecided && !tournament.is_paused;
             const winner = isDecided ? (match.winner?.name || '') : null;
             
             // Only trainers and admins can record match results
             const canRecordAsRole = (userRole === 'admin' || userRole === 'trainer');
+            // Only admins can clear results
+            const canClearResult = (userRole === 'admin' && isDecided);
+            
+            const matchDescription = `${escapeHtml(p1Name)} vs ${escapeHtml(p2Name)}`;
             
             console.log('Match:', match.id, 'userRole:', userRole, 'canRecordResult:', canRecordResult, 'canRecordAsRole:', canRecordAsRole);
 
@@ -836,6 +867,10 @@ async function renderBracket(tournament, bracket) {
                     <i class="fas fa-trophy"></i> Record Result
                 </button>` : ''}
                 ${isDecided ? `<div class="text-center small text-success mt-1"><i class="fas fa-check-circle"></i> Winner: ${escapeHtml(winner)}</div>` : ''}
+                ${canClearResult ? `<button class="btn btn-sm btn-outline-danger mt-2 w-100" 
+                    onclick="clearMatchResult(${tournament.id}, ${match.id}, '${matchDescription}')">
+                    <i class="fas fa-undo"></i> Clear Result
+                </button>` : ''}
             </div>`;
         });
 
@@ -1052,6 +1087,91 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Pause tournament (Admin only)
+ */
+async function pauseTournament(tournamentId) {
+    if (!confirm('Are you sure you want to PAUSE this tournament?\n\nThis will prevent recording any new match results until resumed.')) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/pause`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            showToast('Tournament paused successfully', 'success');
+            // Reload bracket view if open
+            if (currentTournamentId === tournamentId) {
+                viewBracket(tournamentId);
+            }
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to pause tournament', 'error');
+        }
+    } catch (error) {
+        console.error('Error pausing tournament:', error);
+        showToast('Failed to pause tournament', 'error');
+    }
+}
+
+/**
+ * Resume tournament (Admin only)
+ */
+async function resumeTournament(tournamentId) {
+    if (!confirm('Resume this tournament?\n\nMatch results can be recorded again.')) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/resume`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            showToast('Tournament resumed successfully', 'success');
+            // Reload bracket view if open
+            if (currentTournamentId === tournamentId) {
+                viewBracket(tournamentId);
+            }
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to resume tournament', 'error');
+        }
+    } catch (error) {
+        console.error('Error resuming tournament:', error);
+        showToast('Failed to resume tournament', 'error');
+    }
+}
+
+/**
+ * Clear match result (Admin only)
+ */
+async function clearMatchResult(tournamentId, bracketId, matchDescription) {
+    if (!confirm(`Clear result for ${matchDescription}?\n\nWARNING: This will also clear any dependent matches in later rounds.\n\nThis action allows re-recording the correct result.`)) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/bracket/${bracketId}/result`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('Match result cleared successfully', 'success');
+            // Reload bracket view
+            viewBracket(tournamentId);
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to clear result', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing result:', error);
+        showToast('Failed to clear result', 'error');
+    }
 }
 
 // Initialize when DOM is ready
