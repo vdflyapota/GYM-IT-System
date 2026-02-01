@@ -37,7 +37,9 @@ async function fetchLeaderboard() {
         }
 
         const data = await response.json();
+        console.log('Leaderboard response data:', data);
         leaderboardData = data.leaderboard || [];
+        console.log('Leaderboard array length:', leaderboardData.length);
         
         // Get user role from first load or fetch it
         if (!userRole) {
@@ -95,7 +97,10 @@ async function getUserRole() {
 function updateStats(data) {
     const totalPlayers = data.total_players || 0;
     const activePlayers = leaderboardData.filter(p => p.tournaments_played > 0).length;
-    const totalTournaments = Math.max(...leaderboardData.map(p => p.tournaments_played), 0);
+    // Safe handling of empty arrays - check length before Math.max
+    const totalTournaments = leaderboardData.length > 0 
+        ? Math.max(...leaderboardData.map(p => p.tournaments_played || 0)) 
+        : 0;
     // Calculate total matches, handling members who don't have total_wins/total_losses
     const totalMatches = leaderboardData.reduce((sum, p) => {
         const wins = p.total_wins || 0;
