@@ -38,6 +38,18 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.header-role-badge {
+  display: inline-block;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .header-actions {
   display: flex;
   align-items: center;

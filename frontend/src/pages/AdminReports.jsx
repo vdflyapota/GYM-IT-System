@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './AdminReports.css';
 
 export default function AdminReports() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -18,8 +20,15 @@ export default function AdminReports() {
   });
 
   useEffect(() => {
+    // Check if user is admin
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.role !== 'admin') {
+      // Redirect non-admins away
+      navigate('/dashboard');
+      return;
+    }
     fetchUsers();
-  }, []);
+  }, [navigate]);
 
   const fetchUsers = async () => {
     try {

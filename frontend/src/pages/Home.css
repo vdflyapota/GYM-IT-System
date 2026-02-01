@@ -42,6 +42,18 @@
   font-size: var(--font-size-lg);
 }
 
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-white);
+  color: var(--color-white);
+  transition: all var(--transition-base);
+}
+
+.btn-outline:hover {
+  background: var(--color-white);
+  color: var(--color-primary);
+}
+
 @media (max-width: 768px) {
   .home-title {
     font-size: var(--font-size-3xl);

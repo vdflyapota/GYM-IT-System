@@ -1,8 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Hiring.css';
 
 export default function Hiring() {
-  const [jobListings] = useState([
+  const navigate = useNavigate();
+  const [userRole, setUserRole] = useState('user');
+
+  useEffect(() => {
+    // Get user role from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setUserRole(user.role || 'user');
+    
+    // Admins shouldn't be hiring themselves
+    if (user.role === 'admin') {
+      navigate('/admin/reports');
+    }
+  }, [navigate]);
     {
       id: 1,
       title: 'Senior Fitness Trainer',

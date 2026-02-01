@@ -7,6 +7,7 @@ export default function ClassSchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedClass, setSelectedClass] = useState(null);
+  const [isLoggedIn] = useState(!!localStorage.getItem('token'));
 
   const [filters, setFilters] = useState({
     classType: 'all',
@@ -260,7 +261,11 @@ export default function ClassSchedule() {
                             <span>Level:</span>
                             <strong>{classItem.level}</strong>
                           </div>
-                          <button className="btn-register">Sign Up for Class</button>
+                          {isLoggedIn ? (
+                            <button className="btn-register">✅ Sign Up for Class</button>
+                          ) : (
+                            <a href="/login" className="btn-register">🔑 Login to Sign Up</a>
+                          )}
                         </div>
                       )}
                     </div>
