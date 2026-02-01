@@ -14,14 +14,10 @@ function Home() {
     if (token) {
       setIsLoggedIn(true)
       setUserRole(user.role)
+      // Redirect to dashboard
+      navigate('/dashboard', { replace: true })
     }
-  }, [])
-
-  if (isLoggedIn) {
-    // Redirect logged-in users to dashboard
-    navigate('/dashboard')
-    return null
-  }
+  }, [navigate])
 
   return (
     <div className="home-container">
