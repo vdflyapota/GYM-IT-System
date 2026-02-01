@@ -13,7 +13,7 @@ def get_current_user_role():
 def get_current_user_id():
     """Helper to get current user ID from JWT"""
     claims = get_jwt()
-    return claims.get("sub") or claims.get("user_id")
+    return claims.get("user_id")
 
 def require_trainer_or_admin():
     """Helper to check if current user is trainer or admin"""
