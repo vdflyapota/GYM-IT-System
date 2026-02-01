@@ -4,10 +4,25 @@ import './Header.css'
 function Header() {
   const [user, setUser] = useState({ name: 'User', role: 'user' })
 
+  // Helper function to safely parse user data
+  const getUserData = () => {
+    try {
+      const userStr = localStorage.getItem('user')
+      if (!userStr) return { name: 'User', role: 'user' }
+      
+      // Try to parse as JSON
+      const userData = JSON.parse(userStr)
+      return userData
+    } catch (e) {
+      // If parsing fails, user was stored as plain string (email)
+      return { name: 'User', role: 'user', email: userStr }
+    }
+  }
+
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    const userData = getUserData()
     setUser({
-      name: userData.name || userData.username || 'User',
+      name: userData.name || userData.email?.split('@')[0] || userData.username || 'User',
       role: userData.role || 'user'
     })
   }, [])

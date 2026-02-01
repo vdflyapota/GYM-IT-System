@@ -5,11 +5,28 @@ import './Sidebar.css'
 function Sidebar() {
   const location = useLocation()
   const [userRole, setUserRole] = useState('user')
+  const [userName, setUserName] = useState('User')
+
+  // Helper function to safely parse user data
+  const getUserData = () => {
+    try {
+      const userStr = localStorage.getItem('user')
+      if (!userStr) return { name: 'User', role: 'user' }
+      
+      // Try to parse as JSON
+      const user = JSON.parse(userStr)
+      return user
+    } catch (e) {
+      // If parsing fails, user was stored as plain string (email)
+      return { name: 'User', role: 'user', email: userStr }
+    }
+  }
 
   useEffect(() => {
-    // Get user role from localStorage or auth context
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    // Get user data safely
+    const user = getUserData()
     setUserRole(user.role || 'user')
+    setUserName(user.name || user.email?.split('@')[0] || 'User')
   }, [])
 
   // Define menu items based on user role
@@ -48,7 +65,7 @@ function Sidebar() {
       <div className="sidebar-user-info">
         <div className="user-badge">{userRole === 'admin' ? '👑' : userRole === 'trainer' ? '🏋️' : '👤'}</div>
         <div className="user-details">
-          <p className="user-name">{JSON.parse(localStorage.getItem('user') || '{}').name || 'User'}</p>
+          <p className="user-name">{userName}</p>
           <p className="user-role" style={{
             color: userRole === 'admin' ? '#ff6b6b' : userRole === 'trainer' ? '#4facfe' : '#667eea'
           }}>
