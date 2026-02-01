@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import socket
+from datetime import datetime  # ADD THIS LINE - FIXES THE ERROR
 
 app = Flask(__name__)
 
@@ -28,10 +29,10 @@ def create_notification():
         "read": False
     }
     notifications.append(notification)
-    
+
     # Log the notification (in real app, would send email/websocket)
-    print(f"📧 Notification created: {notification['title']}")
-    
+    print(f"≡ƒôº Notification created: {notification['title']}")
+
     return jsonify(notification), 201
 
 @app.route('/api/notifications', methods=['GET'])
@@ -41,6 +42,14 @@ def get_notifications():
         user_notifications = [n for n in notifications if n.get('user_id') == user_id]
         return jsonify(user_notifications)
     return jsonify(notifications[:50])  # Return latest 50
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['PUT'])
+def mark_as_read(notification_id):
+    for notification in notifications:
+        if notification['id'] == notification_id:
+            notification['read'] = True
+            return jsonify(notification)
+    return jsonify({"error": "Notification not found"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8004, debug=True)
