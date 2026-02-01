@@ -686,37 +686,47 @@ def get_leaderboard():
             logging.error(f"Error fetching users from user-service: {str(e)}")
             users_data = []
         
+        logging.info(f"Fetched {len(users_data)} users from user-service")
+        
         # Calculate statistics for each user
         leaderboard_data = []
         
         for user in users_data:
             user_id = user.get("id")
             
-            # Get all participants for this user
-            participants = Participant.query.filter_by(user_id=user_id, status="approved").all()
+            # Get all participants for this user (both approved and pending to count participations)
+            all_participants = Participant.query.filter_by(user_id=user_id).all()
+            approved_participants = [p for p in all_participants if getattr(p, 'status', 'approved') == 'approved']
             
             # Calculate statistics
-            tournaments_played = len(set([p.tournament_id for p in participants]))
+            tournaments_played = len(set([p.tournament_id for p in approved_participants]))
             total_wins = 0
             total_losses = 0
             tournament_wins = 0  # Number of tournaments won
             
-            for participant in participants:
+            # Track all matches the user participated in (across all their participant records)
+            matches_participated = set()
+            
+            for participant in approved_participants:
                 # Check if this participant won any matches
-                matches_won = Bracket.query.filter_by(winner_id=participant.id).count()
-                total_wins += matches_won
+                wins = Bracket.query.filter_by(winner_id=participant.id).all()
+                total_wins += len(wins)
                 
-                # Check if participant was in any match and didn't win
+                # Get all matches this participant was in
                 matches_as_p1 = Bracket.query.filter_by(participant1_id=participant.id).all()
                 matches_as_p2 = Bracket.query.filter_by(participant2_id=participant.id).all()
                 
-                total_matches = len(matches_as_p1) + len(matches_as_p2)
-                total_losses = total_matches - matches_won
+                all_user_matches = matches_as_p1 + matches_as_p2
+                
+                # Count losses (participated but didn't win, and match has a winner)
+                for match in all_user_matches:
+                    if match.winner_id and match.winner_id != participant.id:
+                        total_losses += 1
                 
                 # Check if won the tournament (won the final match)
                 tournament = Tournament.query.get(participant.tournament_id)
                 if tournament and tournament.status == "completed":
-                    # Find the final match (highest round number)
+                    # Find the final match (highest round number for this tournament)
                     final_match = Bracket.query.filter_by(
                         tournament_id=tournament.id
                     ).order_by(Bracket.round.desc(), Bracket.match_number.desc()).first()
@@ -759,11 +769,13 @@ def get_leaderboard():
                 })
         
         # Sort by points (descending), then by tournament wins, then by total wins
-        leaderboard_data.sort(key=lambda x: (x["points"], x["tournament_wins"], x["total_wins"]), reverse=True)
+        leaderboard_data.sort(key=lambda x: (x["points"], x.get("tournament_wins", 0), x.get("total_wins", 0)), reverse=True)
         
         # Add ranks
         for index, entry in enumerate(leaderboard_data):
             entry["rank"] = index + 1
+        
+        logging.info(f"Returning leaderboard with {len(leaderboard_data)} entries")
         
         return jsonify({
             "leaderboard": leaderboard_data,
