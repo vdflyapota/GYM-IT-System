@@ -17,3 +17,4 @@ black==24.10.0
 bandit==1.7.9
 fastapi
 uvicorn
+Flask==2.3.3
