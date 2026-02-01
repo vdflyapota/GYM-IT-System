@@ -1,55 +1,186 @@
-# GYM IT System: Project Schedule & Task Distribution
+# GYM IT System - Microservices Architecture
 
-## 🚀 Microservices Architecture
+> A comprehensive gym management system with tournament support, leaderboards, and role-based access control.
 
-This project has been migrated to a microservices architecture! See the comprehensive documentation:
-
-- **[Microservices Overview](MICROSERVICES.md)** - Complete guide to the microservices architecture
-- **[Architecture Diagrams](ARCHITECTURE.md)** - Detailed system architecture and patterns
-- **[Kubernetes Deployment](K8S_DEPLOYMENT.md)** - Production deployment guide
-
-### Quick Start (Microservices)
+## 🚀 Quick Start
 
 ```bash
-# Check system requirements and port availability
-./scripts/diagnose.sh
-
 # Start all microservices
 ./scripts/start-microservices.sh
 
-# Stop all microservices
-./scripts/stop-microservices.sh
-
-# Test the services
-./scripts/test-microservices.sh
-
-# Access the application
-# API Gateway: http://localhost:8000
+# Access the application at http://localhost:8000
 ```
 
-**Default Admin Login**:
-- Email: `admin@gym.com`
+**Default Admin Credentials:**
+- Email: `admin@gym.com`  
 - Password: `admin`
-
-The admin account is automatically created on first launch to approve new user registrations.
-
-**Troubleshooting**: If you encounter port conflict errors, run `./scripts/diagnose.sh` to identify which processes are using the required ports, then stop them before starting the microservices.
-
-**Note**: If you were running the old monolithic version, the start script will automatically stop it to avoid port conflicts.
-
-### Services
-
-- **API Gateway** (Port 8000) - Entry point and request routing
-- **Auth Service** (Port 8001) - Authentication and JWT generation
-- **User Service** (Port 8002) - User management and profiles
-- **Tournament Service** (Port 8003) - Tournament logic and brackets
-- **Notification Service** (Port 8004) - Real-time notifications via WebSocket
-
-Each service has its own PostgreSQL database and can be scaled independently.
 
 ---
 
-## Team Members & Core Responsibilities
+## 📚 Documentation
+
+Core documentation is organized in the `docs/` folder:
+
+- **[Full Implementation Overview](FINAL_SUMMARY.md)** - Complete project summary and features
+- **[Architecture & Design](docs/architecture/ARCHITECTURE.md)** - System architecture and patterns
+- **[Microservices Guide](docs/guides/MICROSERVICES.md)** - Complete guide to each service
+- **[Kubernetes Deployment](docs/guides/K8S_DEPLOYMENT.md)** - Production deployment
+- **[Additional Guides](docs/guides/)** - Role-based UI, migration, tournament features, etc.
+- **[Archived Documentation](docs/archived/)** - Legacy fix documents and notes
+
+### Troubleshooting
+
+- **Port Conflicts**: Run `./scripts/diagnose.sh` to identify and resolve port issues
+- **Database Issues**: Services use separate PostgreSQL instances for isolation
+- **Service Health**: Check individual service health endpoints at `http://localhost:PORT/healthz`
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────┐
+│      API Gateway (Port 8000)        │
+│    Request routing & validation     │
+└────────────┬────────────────────────┘
+             │
+     ┌───────┼────────┬──────────┐
+     │       │        │          │
+  ┌──▼─┐  ┌─▼──┐  ┌──▼──┐  ┌───▼──┐
+  │Auth│  │User│  │Tour-│  │Notif-│
+  │Svc │  │Svc │  │nament│ │Service│
+  │    │  │    │  │Svc  │  │      │
+  └─┬──┘  └─┬──┘  └──┬──┘  └───┬──┘
+    │       │        │          │
+  ┌─▼──┐  ┌─▼──┐  ┌─▼──┐   ┌──▼──┐
+  │Auth│  │User│  │Tour│   │Redis│
+  │ DB │  │ DB │  │ DB │   │Cache│
+  └────┘  └────┘  └────┘   └─────┘
+```
+
+**Each microservice includes:**
+- ✅ Independent database
+- ✅ REST API endpoints
+- ✅ Health check endpoint (`/healthz`)
+- ✅ Docker containerization
+- ✅ Kubernetes deployment configs
+
+### Service Endpoints
+
+| Service | Port | URL | Health Check |
+|---------|------|-----|--------------|
+| **API Gateway** | 8000 | http://localhost:8000 | http://localhost:8000/healthz |
+| **Auth Service** | 8001 | http://localhost:8001 | http://localhost:8001/healthz |
+| **User Service** | 8002 | http://localhost:8002 | http://localhost:8002/healthz |
+| **Tournament Service** | 8003 | http://localhost:8003 | http://localhost:8003/healthz |
+| **Notification Service** | 8004 | http://localhost:8004 | http://localhost:8004/healthz |
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Flask 3.0, Python 3.11 |
+| **Database** | PostgreSQL 16 |
+| **Frontend** | Vanilla JavaScript, Bootstrap 5, HTML5 |
+| **Containerization** | Docker & Docker Compose |
+| **Orchestration** | Kubernetes (optional) |
+| **Authentication** | JWT (JSON Web Tokens) |
+| **Real-time** | WebSockets (Socket.IO) |
+| **Caching** | Redis |
+
+---
+
+## 📋 Project Requirements
+
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
+- 5+ available ports (8000-8004)
+- PostgreSQL 16 (or use Docker)
+- 2GB+ RAM for all services
+
+---
+
+## 📁 Project Structure
+
+```
+gym-it-system/
+├── README.md                          # This file
+├── FINAL_SUMMARY.md                   # Complete implementation overview
+├── LICENSE
+├── Makefile
+│
+├── docs/                              # All documentation
+│   ├── architecture/
+│   │   └── ARCHITECTURE.md
+│   ├── guides/
+│   │   ├── MICROSERVICES.md
+│   │   ├── K8S_DEPLOYMENT.md
+│   │   └── ... (more guides)
+│   └── archived/                      # Legacy documents
+│
+├── services/                          # Microservices
+│   ├── api-gateway/
+│   ├── auth-service/
+│   ├── user-service/
+│   ├── tournament-service/
+│   └── notification-service/
+│
+├── static/                            # Frontend assets
+│   ├── js/
+│   ├── css/
+│   └── *.html (pages)
+│
+├── scripts/                           # Automation
+│   ├── start-microservices.sh
+│   ├── stop-microservices.sh
+│   └── test-microservices.sh
+│
+├── docker-compose.yml                 # Development
+└── docker-compose.microservices.yml   # Microservices mode
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Install Docker Desktop
+- Clone this repository
+- Ensure ports 8000-8004 are available
+
+### Run the Application
+
+```bash
+# Start all microservices
+./scripts/start-microservices.sh
+
+# Wait for services to initialize (~30 seconds)
+# Then open http://localhost:8000 in your browser
+
+# Login with:
+# Email: admin@gym.com
+# Password: admin
+```
+
+### Stop Services
+
+```bash
+./scripts/stop-microservices.sh
+```
+
+### View Logs
+
+```bash
+# See all running containers
+docker-compose -f docker-compose.microservices.yml logs -f
+
+# See specific service logs
+docker-compose -f docker-compose.microservices.yml logs -f auth-service
+```
+
+---
+
+## 🔧 Development
 | Student | Core Domain (Vertical Slice) | Architectural Responsibility |
 | :--- | :--- | :--- |
 | **Danial Rakhat** | **Tournament Engine:** Brackets, Match Scheduling, Scoring Logic. | **Scalability & DevOps:** Dockerization, Kubernetes configuration, CI pipelines. |
