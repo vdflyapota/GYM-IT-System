@@ -30,3 +30,6 @@ Thumbs.db
 
 # Личные заметки (не коммитить)
 ONBOARDING.md
+
+# Legacy: старый HTML-интерфейс (основной UI — frontend/)
+static/
