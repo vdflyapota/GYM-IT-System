@@ -1,6 +1,8 @@
 # GYM IT System - Microservices Architecture
 
 > A comprehensive gym management system with tournament support, leaderboards, and role-based access control.
+>
+> **Status**: ✅ Production Ready | **Architecture**: Microservices | **Deployment**: Docker, Kubernetes
 
 ## 🚀 Quick Start
 
