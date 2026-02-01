@@ -123,6 +123,7 @@ async function loadTournaments() {
  */
 async function createTournament() {
     const name = document.getElementById('tName').value;
+    const deadline = document.getElementById('tDeadline').value;
     const maxParticipants = parseInt(document.getElementById('tMax').value);
     const tournamentType = document.getElementById('tType') ? document.getElementById('tType').value : 'single_elimination';
 
@@ -132,6 +133,19 @@ async function createTournament() {
     }
 
     try {
+        // Prepare request body
+        const requestBody = {
+            name: name,
+            start_date: new Date().toISOString(),
+            max_participants: maxParticipants,
+            tournament_type: tournamentType
+        };
+
+        // Add registration_deadline if provided
+        if (deadline) {
+            requestBody.registration_deadline = new Date(deadline).toISOString();
+        }
+
         // Use authFetch from auth.js if available, otherwise fall back to manual token
         const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
         const headers = typeof authFetch !== 'undefined' ? {} : {
@@ -142,17 +156,7 @@ async function createTournament() {
         const response = await fetchFn(API_BASE + '/', {
             method: 'POST',
             headers: headers,
-            body: typeof authFetch !== 'undefined' ? {
-                name: name,
-                start_date: new Date().toISOString(),
-                max_participants: maxParticipants,
-                tournament_type: tournamentType
-            } : JSON.stringify({
-                name: name,
-                start_date: new Date().toISOString(),
-                max_participants: maxParticipants,
-                tournament_type: tournamentType
-            })
+            body: typeof authFetch !== 'undefined' ? requestBody : JSON.stringify(requestBody)
         });
 
         if (response.ok) {
@@ -226,11 +230,49 @@ function createTournamentCard(tournament) {
     const participantText = `${tournament.participant_count}/${tournament.max_participants}`;
     const isFull = tournament.participant_count >= tournament.max_participants;
     
+    // Check if registration deadline has passed
+    const now = new Date();
+    const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < now;
+    
+    // Format deadline for display
+    let deadlineDisplay = '';
+    if (tournament.registration_deadline) {
+        const deadline = new Date(tournament.registration_deadline);
+        const timeLeft = deadline - now;
+        
+        if (deadlinePassed) {
+            deadlineDisplay = `
+                <div class="alert alert-danger py-1 px-2 mb-2 small">
+                    <i class="fas fa-clock"></i> Registration Closed
+                </div>
+            `;
+        } else {
+            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            
+            let timeText = '';
+            if (days > 0) {
+                timeText = `${days}d ${hours}h left`;
+            } else if (hours > 0) {
+                timeText = `${hours}h left`;
+            } else {
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                timeText = `${minutes}m left`;
+            }
+            
+            deadlineDisplay = `
+                <div class="alert alert-info py-1 px-2 mb-2 small">
+                    <i class="fas fa-clock"></i> Register by: ${deadline.toLocaleString()} (${timeText})
+                </div>
+            `;
+        }
+    }
+    
     // Only trainers and admins can add participants
     const canAddParticipants = (userRole === 'admin' || userRole === 'trainer') && !isFull;
     
-    // Members can request to join (if tournament is not full and in setup status)
-    const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup';
+    // Members can request to join (if tournament is not full, in setup status, and deadline hasn't passed)
+    const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup' && !deadlinePassed;
     
     // Trainers and admins can generate bracket when status is setup
     const canGenerateBracket = (userRole === 'admin' || userRole === 'trainer') && tournament.status === 'setup' && tournament.participant_count >= 2;
@@ -252,6 +294,7 @@ function createTournamentCard(tournament) {
                     ${tournament.tournament_type.replace('_', ' ').toUpperCase()} • 
                     ${tournament.max_participants} Participants
                 </p>
+                ${deadlineDisplay}
                 <div class="d-grid gap-2 mt-4">
                     ${canAddParticipants ? `
                         <button class="btn btn-primary btn-sm" onclick="openParticipantModal(${tournament.id})">
@@ -261,6 +304,11 @@ function createTournamentCard(tournament) {
                     ${canRequestJoin ? `
                         <button class="btn btn-success btn-sm" onclick="requestToJoin(${tournament.id})">
                             <i class="fas fa-hand-paper"></i> Request to Join
+                        </button>
+                    ` : ''}
+                    ${deadlinePassed && userRole === 'member' && tournament.status === 'setup' ? `
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-ban"></i> Registration Closed
                         </button>
                     ` : ''}
                     ${canGenerateBracket ? `

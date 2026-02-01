@@ -33,6 +33,7 @@ def create_tournament():
     payload = request.get_json(silent=True) or {}
     name = payload.get("name")
     start_date = payload.get("start_date")
+    registration_deadline = payload.get("registration_deadline")  # Optional
     max_participants = payload.get("max_participants", 8)
     tournament_type = payload.get("tournament_type", "single_elimination")
 
@@ -47,10 +48,28 @@ def create_tournament():
     except (ValueError, AttributeError):
         return jsonify({"detail": "Invalid start date format"}), 400
 
+    # Parse and validate registration_deadline if provided
+    deadline_dt = None
+    if registration_deadline:
+        try:
+            deadline_dt = datetime.fromisoformat(registration_deadline.replace("Z", "+00:00"))
+            
+            # Validate deadline is in the future
+            if deadline_dt <= datetime.now(deadline_dt.tzinfo):
+                return jsonify({"detail": "Registration deadline must be in the future"}), 400
+            
+            # Validate deadline is before start date
+            if deadline_dt >= start_dt:
+                return jsonify({"detail": "Registration deadline must be before tournament start date"}), 400
+                
+        except (ValueError, AttributeError):
+            return jsonify({"detail": "Invalid registration deadline format"}), 400
+
     try:
         tournament = Tournament(
             name=name,
             start_date=start_dt,
+            registration_deadline=deadline_dt,
             max_participants=max_participants,
             tournament_type=tournament_type,
             status="setup",
