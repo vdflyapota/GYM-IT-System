@@ -15,6 +15,7 @@ function Header() {
       return userData
     } catch (e) {
       // If parsing fails, user was stored as plain string (email)
+      const userStr = localStorage.getItem('user')
       return { name: 'User', role: 'user', email: userStr }
     }
   }
