@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import Home from './pages/Home'
 import LoadingSpinner from './components/UI/LoadingSpinner'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Lazy load pages for performance (Phase 3 requirement)
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -16,23 +17,25 @@ const Hiring = lazy(() => import('./pages/Hiring'))
 
 function App() {
   return (
-    <Router>
-      <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/class-schedule" element={<ClassSchedule />} />
-          <Route path="/hiring" element={<Hiring />} />
-          <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/tournaments" element={<Tournaments />} />
-            <Route path="/admin/reports" element={<AdminReports />} />
-          </Route>
-        </Routes>
-      </Suspense>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/class-schedule" element={<ClassSchedule />} />
+            <Route path="/hiring" element={<Hiring />} />
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </Router>
+    </ErrorBoundary>
   )
 }
 
