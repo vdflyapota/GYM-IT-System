@@ -40,6 +40,11 @@
 .btn-large {
   padding: var(--spacing-md) var(--spacing-2xl);
   font-size: var(--font-size-lg);
+  display: inline-block;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: all var(--transition-base);
 }
 
 .btn-outline {
@@ -52,6 +57,28 @@
 .btn-outline:hover {
   background: var(--color-white);
   color: var(--color-primary);
+}
+
+.home-actions .btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.home-actions .btn-primary:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.home-actions .btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+}
+
+.home-actions .btn-secondary:hover {
+  background-color: var(--color-secondary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 768px) {
