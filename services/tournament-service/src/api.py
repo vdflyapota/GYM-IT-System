@@ -661,6 +661,10 @@ def clear_result(tournament_id, bracket_id):
 def get_leaderboard():
     """Get tournament leaderboard with player statistics"""
     try:
+        # Get current user's role for role-based data filtering
+        current_user_role = get_current_user_role()
+        logging.info(f"Leaderboard requested by user role: {current_user_role}")
+        
         # Get user_service URL from environment
         user_service_url = "http://user-service:5001"
         
@@ -727,18 +731,32 @@ def get_leaderboard():
             # Calculate points (you can adjust the scoring system)
             points = (tournament_wins * 100) + (total_wins * 10)
             
-            leaderboard_data.append({
-                "user_id": user_id,
-                "user_name": user.get("full_name"),
-                "email": user.get("email"),
-                "role": user.get("role"),
-                "tournaments_played": tournaments_played,
-                "tournament_wins": tournament_wins,
-                "total_wins": total_wins,
-                "total_losses": total_losses,
-                "win_rate": round(win_rate, 1),
-                "points": points
-            })
+            # Role-based data filtering
+            if current_user_role == "member":
+                # Members see limited data (no emails, no detailed match stats)
+                leaderboard_data.append({
+                    "user_id": user_id,
+                    "user_name": user.get("full_name"),
+                    "role": user.get("role"),
+                    "tournaments_played": tournaments_played,
+                    "tournament_wins": tournament_wins,
+                    "win_rate": round(win_rate, 1),
+                    "points": points
+                })
+            else:
+                # Trainers and Admins see full data
+                leaderboard_data.append({
+                    "user_id": user_id,
+                    "user_name": user.get("full_name"),
+                    "email": user.get("email"),
+                    "role": user.get("role"),
+                    "tournaments_played": tournaments_played,
+                    "tournament_wins": tournament_wins,
+                    "total_wins": total_wins,
+                    "total_losses": total_losses,
+                    "win_rate": round(win_rate, 1),
+                    "points": points
+                })
         
         # Sort by points (descending), then by tournament wins, then by total wins
         leaderboard_data.sort(key=lambda x: (x["points"], x["tournament_wins"], x["total_wins"]), reverse=True)

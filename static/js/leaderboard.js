@@ -6,10 +6,11 @@ let currentSort = 'points'; // Default sort by points
 let currentOrder = 'desc';
 let searchQuery = '';
 let roleFilter = 'all';
+let userRole = null; // Current user's role
 
 // Fetch leaderboard data from API
 async function fetchLeaderboard() {
-    try {
+    try:
         const token = localStorage.getItem('token');
         if (!token) {
             window.location.href = '/login.html';
@@ -30,17 +31,63 @@ async function fetchLeaderboard() {
         }
 
         if (!response.ok) {
-            throw new Error('Failed to fetch leaderboard data');
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.detail || errorData.error || errorData.message || 'Failed to load leaderboard';
+            throw new Error(errorMsg);
         }
 
         const data = await response.json();
         leaderboardData = data.leaderboard || [];
         
+        // Get user role from first load or fetch it
+        if (!userRole) {
+            await getUserRole();
+        }
+        
         updateStats(data);
         renderLeaderboard();
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        showToast('Failed to load leaderboard', 'error');
+        showToast(error.message || 'Failed to load leaderboard', 'error');
+        // Show empty state
+        const tbody = document.getElementById('leaderboardBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <p class="text-danger">${error.message}</p>
+                    </td>
+                </tr>`;
+        }
+    }
+}
+
+// Get current user role
+async function getUserRole() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/users/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            userRole = data.role;
+            
+            // Hide role filter for members
+            if (userRole === 'member') {
+                const roleFilterGroup = document.querySelector('.role-filter-group');
+                if (roleFilterGroup) {
+                    roleFilterGroup.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching user role:', error);
     }
 }
 
@@ -49,7 +96,12 @@ function updateStats(data) {
     const totalPlayers = data.total_players || 0;
     const activePlayers = leaderboardData.filter(p => p.tournaments_played > 0).length;
     const totalTournaments = Math.max(...leaderboardData.map(p => p.tournaments_played), 0);
-    const totalMatches = leaderboardData.reduce((sum, p) => sum + p.total_wins + p.total_losses, 0);
+    // Calculate total matches, handling members who don't have total_wins/total_losses
+    const totalMatches = leaderboardData.reduce((sum, p) => {
+        const wins = p.total_wins || 0;
+        const losses = p.total_losses || 0;
+        return sum + wins + losses;
+    }, 0);
 
     document.getElementById('totalPlayers').textContent = totalPlayers;
     document.getElementById('activePlayers').textContent = activePlayers;
@@ -62,11 +114,23 @@ function renderLeaderboard() {
     const tbody = document.getElementById('leaderboardBody');
     if (!tbody) return;
 
+    // Check if data is empty
+    if (!leaderboardData || leaderboardData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No players found</p>
+                </td>
+            </tr>`;
+        return;
+    }
+
     // Filter data
     let filteredData = leaderboardData.filter(player => {
         // Search filter
         const matchesSearch = player.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            player.email.toLowerCase().includes(searchQuery.toLowerCase());
+                            (player.email && player.email.toLowerCase().includes(searchQuery.toLowerCase()));
         
         // Role filter
         const matchesRole = roleFilter === 'all' || player.role === roleFilter;
@@ -137,19 +201,26 @@ function createLeaderboardRow(player, displayRank) {
         roleBadge = '<span class="badge bg-secondary ms-2">Member</span>';
     }
     
+    // Build row HTML based on available data
+    const emailDisplay = player.email ? 
+        `<br><small class="text-muted">${escapeHtml(player.email)}</small>` : '';
+    
+    const totalWins = player.total_wins !== undefined ? player.total_wins : '-';
+    const totalLosses = player.total_losses !== undefined ? player.total_losses : '-';
+    
     tr.innerHTML = `
         <td class="text-center fw-bold">${displayRank} ${medal}</td>
         <td>
             ${escapeHtml(player.user_name)}${roleBadge}
-            <br><small class="text-muted">${escapeHtml(player.email)}</small>
+            ${emailDisplay}
         </td>
         <td class="text-center">${player.points}</td>
         <td class="text-center">${player.tournaments_played}</td>
         <td class="text-center">
             <span class="badge bg-success">${player.tournament_wins}</span>
         </td>
-        <td class="text-center">${player.total_wins}</td>
-        <td class="text-center">${player.total_losses}</td>
+        <td class="text-center">${totalWins}</td>
+        <td class="text-center">${totalLosses}</td>
         <td class="text-center">
             <div class="progress" style="height: 20px;">
                 <div class="progress-bar ${player.win_rate >= 50 ? 'bg-success' : 'bg-warning'}" 
