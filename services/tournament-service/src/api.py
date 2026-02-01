@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from datetime import datetime
 from .models import db, Tournament, Participant, Bracket
+from .config import Config
 import logging
 import requests
 
@@ -278,7 +279,6 @@ def add_participants_bulk(tournament_id):
 @jwt_required()
 def get_available_users():
     """Get list of available users from user-service"""
-    from .config import Config
     
     # Only trainers and admins can see available users
     error = require_trainer_or_admin()
@@ -665,8 +665,8 @@ def get_leaderboard():
         current_user_role = get_current_user_role()
         logging.info(f"Leaderboard requested by user role: {current_user_role}")
         
-        # Get user_service URL from environment
-        user_service_url = "http://user-service:5001"
+        # Get user_service URL from config
+        user_service_url = Config.USER_SERVICE_URL
         
         # Fetch all users from user-service
         auth_header = request.headers.get('Authorization')
