@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
+import Home from './pages/Home'
 import LoadingSpinner from './components/UI/LoadingSpinner'
 
 // Lazy load pages for performance (Phase 3 requirement)
@@ -9,7 +10,6 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const Tournaments = lazy(() => import('./pages/Tournaments'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
-const Home = lazy(() => import('./pages/Home'))
 const AdminReports = lazy(() => import('./pages/AdminReports'))
 const ClassSchedule = lazy(() => import('./pages/ClassSchedule'))
 const Hiring = lazy(() => import('./pages/Hiring'))
