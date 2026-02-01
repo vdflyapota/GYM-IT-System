@@ -27,7 +27,7 @@ The app will run on `http://localhost:3000` with API proxy to `http://localhost:
 npm run build
 ```
 
-Build output will be in `../static/react/` for integration with the FastAPI backend.
+Build output will be in `frontend/dist/`. Backend is API-only; dev server runs separately (see root README).
 
 ## Project Structure
 
