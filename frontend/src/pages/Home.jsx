@@ -4,16 +4,11 @@ import './Home.css'
 
 function Home() {
   const navigate = useNavigate()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userRole, setUserRole] = useState(null)
 
   useEffect(() => {
+    // Check if user is logged in
     const token = localStorage.getItem('token')
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    
     if (token) {
-      setIsLoggedIn(true)
-      setUserRole(user.role)
       // Redirect to dashboard
       navigate('/dashboard', { replace: true })
     }
