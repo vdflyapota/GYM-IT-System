@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import { tournamentsAPI } from '../services/api'
 import './Leaderboard.css'
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState([])
@@ -13,12 +11,20 @@ function Leaderboard() {
   const fetchLeaderboard = async () => {
     try {
       setError(null)
-      const response = await axios.get(`${API_BASE}/challenges/leaderboard`)
-      setLeaderboard(response.data)
+      const data = await tournamentsAPI.getLeaderboard()
+      setLeaderboard(data || [])
       setLastUpdated(new Date())
     } catch (err) {
       setError('Failed to load leaderboard. Please try again.')
       console.error('Leaderboard fetch error:', err)
+      // Use mock data if API fails
+      setLeaderboard([
+        { rank: 1, name: 'John Athlete', points: 2500, tournaments: 5 },
+        { rank: 2, name: 'Sarah Fit', points: 2350, tournaments: 4 },
+        { rank: 3, name: 'Mike Strong', points: 2100, tournaments: 5 },
+        { rank: 4, name: 'Lisa Power', points: 1950, tournaments: 3 },
+        { rank: 5, name: 'Tom Active', points: 1800, tournaments: 4 },
+      ])
     } finally {
       setLoading(false)
     }

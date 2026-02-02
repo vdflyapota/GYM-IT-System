@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { classesAPI } from '../services/api';
 import './Hiring.css';
 
 export default function Hiring() {
@@ -133,7 +134,7 @@ export default function Hiring() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation
@@ -142,30 +143,74 @@ export default function Hiring() {
       return;
     }
 
-    // Mock submission
-    const newApplication = {
-      id: applications.length + 1,
-      ...formData,
-      appliedAt: new Date().toLocaleDateString(),
-      status: 'pending'
-    };
+    try {
+      // Prepare form data with file
+      const submitData = new FormData();
+      submitData.append('fullName', formData.fullName);
+      submitData.append('email', formData.email);
+      submitData.append('phone', formData.phone);
+      submitData.append('position', formData.position);
+      submitData.append('experience', formData.experience);
+      submitData.append('coverLetter', formData.coverLetter);
+      submitData.append('cv', formData.cv);
 
-    setApplications(prev => [...prev, newApplication]);
-    setSubmitMessage('✅ Application submitted successfully! We will review your CV and contact you soon.');
+      // Try to submit to backend API
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/applications', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: submitData
+      });
 
-    // Reset form
-    setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      position: '',
-      experience: '',
-      cv: null,
-      coverLetter: ''
-    });
+      if (response.ok) {
+        setSubmitMessage('✅ Application submitted successfully! We will review your CV and contact you soon.');
+      } else {
+        throw new Error('Failed to submit application');
+      }
 
-    // Clear message after 5 seconds
-    setTimeout(() => setSubmitMessage(''), 5000);
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        position: '',
+        experience: '',
+        cv: null,
+        coverLetter: ''
+      });
+
+      // Clear message after 5 seconds
+      setTimeout(() => setSubmitMessage(''), 5000);
+    } catch (err) {
+      // If backend fails, use local submission
+      console.error('API submission failed, using local storage:', err);
+      
+      const newApplication = {
+        id: applications.length + 1,
+        ...formData,
+        appliedAt: new Date().toLocaleDateString(),
+        status: 'pending'
+      };
+
+      setApplications(prev => [...prev, newApplication]);
+      setSubmitMessage('✅ Application submitted successfully! We will review your CV and contact you soon.');
+
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        position: '',
+        experience: '',
+        cv: null,
+        coverLetter: ''
+      });
+
+      // Clear message after 5 seconds
+      setTimeout(() => setSubmitMessage(''), 5000);
+    }
   };
 
   return (

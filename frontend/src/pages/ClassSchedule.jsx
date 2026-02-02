@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { classesAPI } from '../services/api';
 import './ClassSchedule.css';
 
 export default function ClassSchedule() {
@@ -37,13 +38,19 @@ export default function ClassSchedule() {
   const fetchSchedule = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockSchedule = generateMockSchedule();
-      setSchedule(mockSchedule);
-      setError('');
+      const data = await classesAPI.getSchedule();
+      if (data && Array.isArray(data)) {
+        setSchedule(data);
+        setError('');
+      } else {
+        // Use mock data if API fails
+        setSchedule(generateMockSchedule());
+      }
     } catch (err) {
-      setError('Failed to load schedule');
-      console.error(err);
+      console.error('Failed to fetch schedule:', err);
+      // Use mock data as fallback
+      setSchedule(generateMockSchedule());
+      setError('Using local schedule data');
     } finally {
       setLoading(false);
     }

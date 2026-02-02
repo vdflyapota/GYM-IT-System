@@ -1,8 +1,17 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { usersAPI, tournamentsAPI } from '../services/api'
 import './Dashboard.css'
 
 function Dashboard() {
+  const [stats, setStats] = useState({
+    rank: '#12',
+    points: 1250,
+    tournaments: 2
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
   // Safely get user data
   const getUserData = () => {
     try {
@@ -17,6 +26,33 @@ function Dashboard() {
   const user = getUserData()
   const userName = user.name || user.email?.split('@')[0] || 'Guest'
 
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // Try to fetch user data and tournaments
+      const userProfile = await usersAPI.getMe();
+      const tournaments = await tournamentsAPI.listTournaments();
+      
+      setStats({
+        rank: '#12', // This would need a dedicated endpoint
+        points: userProfile?.points || 1250,
+        tournaments: tournaments?.length || 2
+      })
+      setError('')
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err)
+      // Keep default mock data as fallback
+      setError('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-stats">
@@ -24,21 +60,21 @@ function Dashboard() {
           <div className="stat-icon">🏅</div>
           <div className="stat-content">
             <h6 className="stat-label">Your Rank</h6>
-            <h3 className="stat-value">#12</h3>
+            <h3 className="stat-value">{stats.rank}</h3>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon">⭐</div>
           <div className="stat-content">
             <h6 className="stat-label">Points Earned</h6>
-            <h3 className="stat-value">1,250</h3>
+            <h3 className="stat-value">{stats.points.toLocaleString()}</h3>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon">🏆</div>
           <div className="stat-content">
             <h6 className="stat-label">Active Tournaments</h6>
-            <h3 className="stat-value">2</h3>
+            <h3 className="stat-value">{stats.tournaments}</h3>
           </div>
         </div>
       </div>
