@@ -185,40 +185,6 @@ export default function Hiring() {
       console.error('Application submission error:', err);
     }
   };
-        coverLetter: ''
-      });
-
-      // Clear message after 5 seconds
-      setTimeout(() => setSubmitMessage(''), 5000);
-    } catch (err) {
-      // If backend fails, use local submission
-      console.error('API submission failed, using local storage:', err);
-      
-      const newApplication = {
-        id: applications.length + 1,
-        ...formData,
-        appliedAt: new Date().toLocaleDateString(),
-        status: 'pending'
-      };
-
-      setApplications(prev => [...prev, newApplication]);
-      setSubmitMessage('✅ Application submitted successfully! We will review your CV and contact you soon.');
-
-      // Reset form
-      setFormData({
-        fullName: '',
-        email: '',
-        phone: '',
-        position: '',
-        experience: '',
-        cv: null,
-        coverLetter: ''
-      });
-
-      // Clear message after 5 seconds
-      setTimeout(() => setSubmitMessage(''), 5000);
-    }
-  };
 
   return (
     <div className="hiring-page">
