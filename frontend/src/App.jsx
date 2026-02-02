@@ -14,6 +14,10 @@ const Register = lazy(() => import('./pages/Register'))
 const AdminReports = lazy(() => import('./pages/AdminReports'))
 const ClassSchedule = lazy(() => import('./pages/ClassSchedule'))
 const Hiring = lazy(() => import('./pages/Hiring'))
+const MembershipPortal = lazy(() => import('./pages/MembershipPortal'))
+const KPIDashboard = lazy(() => import('./pages/KPIDashboard'))
+const Communications = lazy(() => import('./pages/Communications'))
+const AccessLogs = lazy(() => import('./pages/AccessLogs'))
 
 function App() {
   return (
@@ -30,7 +34,11 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/membership" element={<MembershipPortal />} />
               <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/kpi" element={<KPIDashboard />} />
+              <Route path="/admin/communications" element={<Communications />} />
+              <Route path="/admin/access-logs" element={<AccessLogs />} />
             </Route>
           </Routes>
         </Suspense>

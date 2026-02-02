@@ -37,6 +37,7 @@ function Sidebar() {
       { path: '/class-schedule', icon: '📅', label: 'Class Schedule', roles: ['user', 'trainer', 'admin'] },
       { path: '/tournaments', icon: '🏆', label: 'Tournaments', roles: ['user', 'trainer', 'admin'] },
       { path: '/leaderboard', icon: '📊', label: 'Leaderboard', roles: ['user', 'trainer', 'admin'] },
+      { path: '/membership', icon: '💳', label: 'Membership', roles: ['user', 'trainer', 'admin'] },
       { path: '/hiring', icon: '💼', label: 'Hiring', roles: ['user', 'trainer'] }, // Visible to non-admins
     ]
 
@@ -44,6 +45,9 @@ function Sidebar() {
     if (userRole === 'admin') {
       baseItems.push(
         { path: '/admin/reports', icon: '📈', label: 'User Reports', roles: ['admin'] },
+        { path: '/admin/kpi', icon: '💹', label: 'KPI Dashboard', roles: ['admin'] },
+        { path: '/admin/communications', icon: '📬', label: 'Communications', roles: ['admin'] },
+        { path: '/admin/access-logs', icon: '🚪', label: 'Access Logs', roles: ['admin'] },
       )
     }
 

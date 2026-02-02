@@ -372,6 +372,175 @@ export const applicationsAPI = {
   },
 }
 
+// Membership API
+export const membershipAPI = {
+  // Get user membership details
+  getMembershipDetails: async () => {
+    try {
+      const response = await apiCall('/membership/details', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Freeze membership
+  freezeMembership: async (reason, duration) => {
+    try {
+      const response = await apiCall('/membership/freeze', {
+        method: 'POST',
+        body: JSON.stringify({ reason, duration }),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Upgrade membership plan
+  upgradeMembership: async (newPlan) => {
+    try {
+      const response = await apiCall('/membership/upgrade', {
+        method: 'POST',
+        body: JSON.stringify({ plan: newPlan }),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Book a class
+  bookClass: async (classId) => {
+    try {
+      const response = await apiCall(`/membership/bookings/${classId}`, {
+        method: 'POST',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get user bookings
+  getMyBookings: async () => {
+    try {
+      const response = await apiCall('/membership/bookings', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Cancel booking
+  cancelBooking: async (bookingId) => {
+    try {
+      const response = await apiCall(`/membership/bookings/${bookingId}`, {
+        method: 'DELETE',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+}
+
+// Admin Analytics API
+export const analyticsAPI = {
+  // Get KPI dashboard data
+  getKPIDashboard: async () => {
+    try {
+      const response = await apiCall('/analytics/kpi', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get access logs
+  getAccessLogs: async (limit = 100) => {
+    try {
+      const response = await apiCall(`/analytics/access-logs?limit=${limit}`, {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get user statistics
+  getUserStatistics: async () => {
+    try {
+      const response = await apiCall('/analytics/users', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get revenue analytics
+  getRevenue: async (period = 'monthly') => {
+    try {
+      const response = await apiCall(`/analytics/revenue?period=${period}`, {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+}
+
+// Communication API
+export const communicationAPI = {
+  // Send bulk email
+  sendBulkEmail: async (recipients, subject, message) => {
+    try {
+      const response = await apiCall('/communications/email/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ recipients, subject, message }),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Send bulk SMS
+  sendBulkSMS: async (recipients, message) => {
+    try {
+      const response = await apiCall('/communications/sms/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ recipients, message }),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get communication history
+  getCommunicationHistory: async () => {
+    try {
+      const response = await apiCall('/communications/history', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+}
+
 export default {
   authAPI,
   usersAPI,
@@ -379,4 +548,7 @@ export default {
   notificationsAPI,
   classesAPI,
   applicationsAPI,
+  membershipAPI,
+  analyticsAPI,
+  communicationAPI,
 }
