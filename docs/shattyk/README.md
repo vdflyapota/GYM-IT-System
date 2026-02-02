@@ -170,3 +170,11 @@ such as when a tournament match starts.
 ```bash
 pip install -r requirements.txt
 uvicorn app:app --reload --port 8004
+
+# Kubernetes Deployment
+
+The system can be deployed via Kubernetes.  
+- Each service is defined in deployment.yaml  
+- Horizontal scaling configured with replicas: 5  
+- Services are exposed using service.yaml  
+- Ingress is configured for API Gateway access
