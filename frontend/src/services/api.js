@@ -319,10 +319,64 @@ export const classesAPI = {
   },
 }
 
+// Applications API
+export const applicationsAPI = {
+  // Submit job application
+  submitApplication: async (formData) => {
+    try {
+      const response = await apiCall('/applications/submit', {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // List applications (admin only)
+  listApplications: async () => {
+    try {
+      const response = await apiCall('/applications/', {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Get single application
+  getApplication: async (appId) => {
+    try {
+      const response = await apiCall(`/applications/${appId}`, {
+        method: 'GET',
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Update application status
+  updateApplicationStatus: async (appId, status) => {
+    try {
+      const response = await apiCall(`/applications/${appId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+}
+
 export default {
   authAPI,
   usersAPI,
   tournamentsAPI,
   notificationsAPI,
   classesAPI,
+  applicationsAPI,
 }

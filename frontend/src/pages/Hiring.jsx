@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { classesAPI } from '../services/api';
+import { applicationsAPI } from '../services/api';
 import './Hiring.css';
 
 export default function Hiring() {
@@ -156,7 +156,7 @@ export default function Hiring() {
 
       // Try to submit to backend API
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/applications', {
+      const response = await fetch('http://localhost:8000/api/applications/submit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -166,18 +166,25 @@ export default function Hiring() {
 
       if (response.ok) {
         setSubmitMessage('✅ Application submitted successfully! We will review your CV and contact you soon.');
+        // Reset form
+        setFormData({
+          fullName: '',
+          email: '',
+          phone: '',
+          position: '',
+          experience: '',
+          cv: null,
+          coverLetter: ''
+        });
       } else {
-        throw new Error('Failed to submit application');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to submit application');
       }
-
-      // Reset form
-      setFormData({
-        fullName: '',
-        email: '',
-        phone: '',
-        position: '',
-        experience: '',
-        cv: null,
+    } catch (err) {
+      setSubmitMessage(`❌ Error: ${err.message || 'Failed to submit application'}`);
+      console.error('Application submission error:', err);
+    }
+  };
         coverLetter: ''
       });
 
