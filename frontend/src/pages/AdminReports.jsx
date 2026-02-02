@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usersAPI } from '../services/api';
 import './AdminReports.css';
 
 export default function AdminReports() {
@@ -44,18 +45,12 @@ export default function AdminReports() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch users');
-      
-      const data = await response.json();
-      setUsers(data.users || data);
-      calculateStats(data.users || data);
       setError('');
+      const data = await usersAPI.listUsers();
+      setUsers(data || []);
+      calculateStats(data || []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to fetch users');
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
