@@ -4,33 +4,36 @@
   <meta charset="UTF-8" />
   <title>HealthGYM | Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Bootstrap + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <style>
     body { background-color: #f5f6f8; }
-    .sidebar {
-      min-height: 100vh;
-      background: #ffffff;
-      border-right: 1px solid #e6e7eb;
+    .sidebar { min-height: 100vh; background: #ffffff; border-right: 1px solid #e6e7eb; }
+    .stat-card { border: 1px solid #eee; border-radius: 10px; background: #fff; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); }
+    .notification-badge {
+      position: absolute; top: -5px; right: -5px; background: #dc3545; color: white;
+      border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center;
+      justify-content: center; font-size: 11px; font-weight: bold;
     }
-    .stat-card {
-      border: 1px solid #eee;
-      border-radius: 10px;
-      background: #fff;
-    }
+    .notification-item { border-left: 3px solid #007bff; padding: 10px; margin-bottom: 10px; background: #f8f9fa; border-radius: 5px; cursor: pointer; }
+    .notification-item.unread { background: #e7f3ff; }
+    .notification-item.success { border-left-color: #28a745; }
+    .notification-item.warning { border-left-color: #ffc107; }
+    .notification-item.error { border-left-color: #dc3545; }
+    .blog-preview { cursor: pointer; transition: background 0.2s; padding: 10px; border-radius: 5px; }
+    .blog-preview:hover { background: #f8f9fa; }
   </style>
 </head>
 <body>
   <div class="container-fluid">
     <div class="row">
-      <!-- Sidebar -->
       <div class="col-md-3 col-lg-2 sidebar p-4">
         <div class="d-flex align-items-center mb-4">
           <i class="fas fa-dumbbell fa-2x text-success me-2"></i>
           <h5 class="mb-0">HealthGYM</h5>
         </div>
-
         <div class="mb-3">
           <p class="text-muted mb-1">Logged in as</p>
           <div>
@@ -38,17 +41,20 @@
             <span id="userRole" class="badge bg-secondary ms-2">guest</span>
           </div>
         </div>
-
         <hr />
-
         <div class="d-grid gap-2">
+          <a href="/profile.html" class="btn btn-outline-secondary w-100 text-start">
+            <i class="fas fa-user me-2"></i> My Profile
+          </a>
           <a href="/tournaments.html" class="btn btn-outline-secondary w-100 text-start">
             <i class="fas fa-trophy me-2"></i> Tournaments
           </a>
           <a href="/leaderboard.html" class="btn btn-outline-secondary w-100 text-start">
             <i class="fas fa-chart-line me-2"></i> Leaderboard
           </a>
-          <!-- Admin button: hidden by default, shown only for admin via JS -->
+          <a href="/blog.html" class="btn btn-outline-secondary w-100 text-start">
+            <i class="fas fa-blog me-2"></i> Blog
+          </a>
           <a id="adminLink" href="/admin.html" class="btn btn-danger w-100 text-start d-none">
             <i class="fas fa-lock me-2"></i> Admin Panel
           </a>
@@ -57,35 +63,33 @@
           </button>
         </div>
       </div>
-
-      <!-- Main content -->
       <div class="col-md-9 col-lg-10 p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h2 class="fw-bold mb-1">Dashboard</h2>
-            <p class="text-muted mb-0">Overview of your activity</p>
+            <p class="text-muted mb-0">Real-time overview of your activity</p>
           </div>
           <div class="dropdown">
-            <button class="btn btn-light position-relative" type="button" data-bs-toggle="dropdown">
+            <button class="btn btn-light position-relative" type="button" id="notificationBtn" data-bs-toggle="dropdown">
               <i class="fas fa-bell fa-lg text-secondary"></i>
-              <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+              <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow" style="width: 320px;">
+            <ul class="dropdown-menu dropdown-menu-end shadow" style="width: 350px; max-height: 500px; overflow-y: auto;" id="notificationDropdown">
               <li><h6 class="dropdown-header">Notifications</h6></li>
-              <li><a class="dropdown-item" href="#">🏆 “Summer Cup” starts in 1h</a></li>
-              <li><a class="dropdown-item" href="#">✅ Your profile was verified</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li class="px-3 py-2 text-center">
+                <span class="spinner-border spinner-border-sm" role="status"></span> Loading...
+              </li>
             </ul>
           </div>
         </div>
-
-        <!-- Stats -->
         <div class="row g-4 mb-4">
           <div class="col-md-4">
             <div class="card stat-card p-3">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <h6 class="text-muted">Your Rank</h6>
-                  <h3>#12</h3>
+                  <h3 id="userRank">—</h3>
                 </div>
                 <i class="fas fa-medal fa-3x text-warning"></i>
               </div>
@@ -96,7 +100,7 @@
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <h6 class="text-muted">Points Earned</h6>
-                  <h3>1,250</h3>
+                  <h3 id="userPoints">—</h3>
                 </div>
                 <i class="fas fa-star fa-3x text-primary"></i>
               </div>
@@ -107,54 +111,74 @@
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <h6 class="text-muted">Active Tournaments</h6>
-                  <h3>2</h3>
+                  <h3 id="activeTournaments">—</h3>
                 </div>
                 <i class="fas fa-flag-checkered fa-3x text-success"></i>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Quick actions -->
         <div class="row g-4">
           <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
               <div class="card-body">
-                <h5 class="card-title">Get Started</h5>
-                <p class="text-muted">Jump right into the action.</p>
-                <a href="/tournaments.html" class="btn btn-success me-2">
-                  <i class="fas fa-trophy me-1"></i> View Tournaments
-                </a>
-                <a href="/leaderboard.html" class="btn btn-outline-secondary">
-                  <i class="fas fa-chart-line me-1"></i> View Leaderboard
-                </a>
+                <h5 class="card-title mb-3">
+                  <i class="fas fa-bell me-2"></i> Recent Notifications
+                </h5>
+                <div id="recentNotifications">
+                  <div class="text-center text-muted py-3">
+                    <span class="spinner-border spinner-border-sm" role="status"></span> Loading...
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
           <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
               <div class="card-body">
-                <h5 class="card-title">Profile</h5>
-                <p class="text-muted">Manage your account and preferences.</p>
-                <a href="/profile.html" class="btn btn-outline-primary disabled" aria-disabled="true">
-                  <i class="fas fa-user me-1"></i> Edit Profile (coming soon)
-                </a>
+                <h5 class="card-title mb-3">
+                  <i class="fas fa-blog me-2"></i> Latest Blog Posts
+                </h5>
+                <div id="latestBlogPosts">
+                  <div class="text-center text-muted py-3">
+                    <span class="spinner-border spinner-border-sm" role="status"></span> Loading...
+                  </div>
+                </div>
+                <div class="text-center mt-3">
+                  <a href="/blog.html" class="btn btn-sm btn-outline-primary">View All Posts</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title mb-3">Quick Actions</h5>
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="/tournaments.html" class="btn btn-success">
+                    <i class="fas fa-trophy me-1"></i> View Tournaments
+                  </a>
+                  <a href="/leaderboard.html" class="btn btn-outline-secondary">
+                    <i class="fas fa-chart-line me-1"></i> View Leaderboard
+                  </a>
+                  <a href="/profile.html" class="btn btn-outline-primary">
+                    <i class="fas fa-user me-1"></i> Edit Profile
+                  </a>
+                  <a href="/blog.html" class="btn btn-outline-info">
+                    <i class="fas fa-blog me-1"></i> Read Blog
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-      </div><!-- /main -->
+      </div>
     </div>
   </div>
-
-  <!-- Scripts -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Auth helpers and dashboard logic -->
   <script src="/js/auth.js"></script>
   <script>
-    // Redirect guests to login
     if (!requireAuth()) {
       // requireAuth will redirect to /login.html
     }

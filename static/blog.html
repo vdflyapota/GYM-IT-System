@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthGYM | Blog</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background-color: #f5f6f8; }
+    .blog-card { transition: transform 0.3s; cursor: pointer; height: 100%; }
+    .blog-card:hover { transform: translateY(-5px); }
+    .blog-image { height: 200px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/"><i class="fas fa-dumbbell me-2"></i>HealthGYM</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="/dashboard.html">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/blog.html">Blog</a></li>
+          <li class="nav-item"><a class="nav-link" href="/tournaments.html">Tournaments</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1><i class="fas fa-blog me-2"></i> Health & Fitness Blog</h1>
+        <p class="text-muted">Tips, news, and updates from our fitness community</p>
+      </div>
+    </div>
+
+    <div id="blogPosts" class="row g-4">
+      <div class="col-12 text-center">
+        <div class="spinner-border text-success" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <button id="loadMoreBtn" class="btn btn-outline-success" style="display: none;">
+        <i class="fas fa-plus me-2"></i> Load More
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    let offset = 0;
+    const limit = 9;
+
+    async function loadBlogPosts(append = false) {
+      try {
+        const res = await fetch(`/api/users/blog/posts?limit=${limit}&offset=${offset}`);
+        
+        if (res.ok) {
+          const posts = await res.json();
+          
+          if (!append) {
+            document.getElementById('blogPosts').innerHTML = '';
+          }
+          
+          if (posts.length === 0 && offset === 0) {
+            document.getElementById('blogPosts').innerHTML = `
+              <div class="col-12 text-center">
+                <i class="fas fa-blog fa-4x text-muted mb-3"></i>
+                <h3>No blog posts yet</h3>
+                <p class="text-muted">Check back soon for health and fitness tips!</p>
+              </div>
+            `;
+            return;
+          }
+          
+          posts.forEach(post => {
+            const card = createBlogCard(post);
+            document.getElementById('blogPosts').insertAdjacentHTML('beforeend', card);
+          });
+          
+          // Show/hide load more button
+          const loadMoreBtn = document.getElementById('loadMoreBtn');
+          if (posts.length === limit) {
+            loadMoreBtn.style.display = 'inline-block';
+          } else {
+            loadMoreBtn.style.display = 'none';
+          }
+          
+        } else {
+          showError('Failed to load blog posts');
+        }
+      } catch (e) {
+        showError('Error: ' + e.message);
+      }
+    }
+
+    function createBlogCard(post) {
+      const imageUrl = post.image_url || 'https://via.placeholder.com/400x200?text=Health+%26+Fitness';
+      const excerpt = post.excerpt || post.content.substring(0, 150) + '...';
+      const date = new Date(post.published_at || post.created_at).toLocaleDateString();
+      const author = post.author ? post.author.full_name : 'HealthGYM Team';
+      
+      return `
+        <div class="col-md-4">
+          <div class="card blog-card shadow-sm border-0" onclick="window.location.href='/blog-post.html?slug=${post.slug}'">
+            <img src="${imageUrl}" class="card-img-top blog-image" alt="${post.title}">
+            <div class="card-body">
+              <h5 class="card-title">${escapeHtml(post.title)}</h5>
+              <p class="card-text text-muted small">${escapeHtml(excerpt)}</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                  <i class="fas fa-user me-1"></i> ${escapeHtml(author)}
+                </small>
+                <small class="text-muted">
+                  <i class="fas fa-calendar me-1"></i> ${date}
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showError(message) {
+      document.getElementById('blogPosts').innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-danger">${message}</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+      offset += limit;
+      loadBlogPosts(true);
+    });
+
+    loadBlogPosts();
+  </script>
+</body>
+</html>
