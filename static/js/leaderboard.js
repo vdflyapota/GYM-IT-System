@@ -12,7 +12,7 @@ let userRole = null; // Current user's role
 async function fetchLeaderboard() {
     console.log('[Leaderboard] Starting fetchLeaderboard...');
     try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
         console.log('[Leaderboard] Token exists:', !!token);
         if (!token) {
             console.log('[Leaderboard] No token, redirecting to login');
@@ -91,7 +91,7 @@ async function fetchLeaderboard() {
 // Get current user role
 async function getUserRole() {
     try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
         const response = await fetch('/api/users/me', {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -388,7 +388,7 @@ function showToast(message, type = 'info') {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) {
         window.location.href = '/login.html';
         return;
