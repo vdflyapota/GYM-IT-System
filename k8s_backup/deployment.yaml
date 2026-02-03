@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gymit-api
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: gymit-api
+  template:
+    metadata:
+      labels:
+        app: gymit-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/vdflyapota/gymit:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gymit-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gymit-secrets
+                  key: JWT_SECRET_KEY
+            - name: AES256_KEY_BASE64
+              valueFrom:
+                secretKeyRef:
+                  name: gymit-secrets
+                  key: AES256_KEY_BASE64
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20

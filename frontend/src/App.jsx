@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import LoadingSpinner from './components/UI/LoadingSpinner'
+import VirtualTour from './pages/VirtualTour';
 
 // Lazy load pages for performance (Phase 3 requirement)
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -23,6 +24,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/tournaments" element={<Tournaments />} />
+            {/* ADD VIRTUAL TOUR ROUTE HERE - Inside Layout so it has sidebar */}
+            <Route path="/virtual-tour" element={<VirtualTour />} />
           </Route>
         </Routes>
       </Suspense>

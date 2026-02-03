@@ -4,12 +4,21 @@ import './Sidebar.css'
 
 function Sidebar() {
   const location = useLocation()
+  
+  // Get user role from localStorage or context
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const userRole = user.role || 'member' // Default to member for demo
 
   const menuItems = [
     { path: '/dashboard', icon: '🏠', label: 'Overview' },
     { path: '/tournaments', icon: '🏆', label: 'Tournaments' },
     { path: '/leaderboard', icon: '📊', label: 'Leaderboard' },
   ]
+
+  // Add Virtual Tour for members and admins
+  if (userRole === 'member' || userRole === 'admin') {
+    menuItems.push({ path: '/virtual-tour', icon: '🔄', label: 'Virtual Tour' })
+  }
 
   return (
     <aside className="sidebar">

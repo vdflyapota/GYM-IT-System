@@ -22,12 +22,13 @@ results = {
 
 # Services to test (microservices architecture)
 services = [
-    "http://localhost:8000/",           # API Gateway
-    "http://localhost:8001/health",     # Auth Service
-    "http://localhost:8002/health",     # User Service
-    "http://localhost:8003/health",     # Tournament Service
-    "http://localhost:8004/health",     # Notification Service (Shattyk's)
+    "http://localhost:8080/",           # Main API
+    "http://localhost:8080/healthz",    # Health check
+    "http://localhost:8080/dashboard",  # Dashboard
+    "http://localhost:8080/api/users",  # Users API
+    "http://localhost:8080/api/tournaments", # Tournaments
 ]
+
 
 def test_endpoint(endpoint):
     """Test a single endpoint"""
