@@ -227,8 +227,16 @@ export const tournamentsAPI = {
   // Join tournament
   joinTournament: async (tournamentId) => {
     try {
-      const response = await apiCall(`/tournaments/${tournamentId}/join`, {
+      // Get user name from localStorage
+      const userStr = localStorage.getItem('user') || '{}'
+      const userData = JSON.parse(userStr)
+      const participantName = userData.name || userData.email?.split('@')[0] || 'Participant'
+      
+      const response = await apiCall(`/tournaments/${tournamentId}/participants`, {
         method: 'POST',
+        body: JSON.stringify({
+          name: participantName,
+        }),
       })
       return response.data
     } catch (error) {

@@ -26,11 +26,11 @@ function Login() {
     setError('')
     setSuccess('')
     if (!validateEmail(email)) {
-      setError('Пожалуйста, введите корректный email.')
+      setError('Please enter a valid email address.')
       return
     }
-    if (password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов.')
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters.')
       return
     }
     setLoading(true)
@@ -45,11 +45,11 @@ function Login() {
           role: result.user?.role || 'user',
         }
         localStorage.setItem('user', JSON.stringify(userData))
-        setSuccess('Вход выполнен! Перенаправляем...')
+        setSuccess('Login successful! Redirecting...')
         setTimeout(() => navigate('/dashboard'), 1200)
       }
     } catch (err) {
-      setError(err.message || 'Ошибка входа. Проверьте данные и попробуйте снова.')
+      setError(err.message || 'Login failed. Please check your credentials and try again.')
     } finally {
       setLoading(false)
     }
@@ -58,10 +58,10 @@ function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Вход в HealthGYM</h2>
+        <h2>Login to HealthGYM</h2>
         {error && <div className="error-message animate-fade" role="alert" aria-live="assertive">{error}</div>}
         {success && <div className="success-message animate-fade" role="status" aria-live="polite">{success}</div>}
-        <form onSubmit={handleSubmit} autoComplete="on" aria-label="Форма входа">
+        <form onSubmit={handleSubmit} autoComplete="on" aria-label="Login form">
           <div className="form-group">
             <label htmlFor="login-email">Email</label>
             <input
@@ -80,7 +80,7 @@ function Login() {
             />
           </div>
           <div className="form-group" style={{ position: 'relative' }}>
-            <label htmlFor="login-password">Пароль</label>
+            <label htmlFor="login-password">Password</label>
             <input
               id="login-password"
               type={showPassword ? 'text' : 'password'}
@@ -89,15 +89,15 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoComplete="current-password"
-              placeholder="Введите пароль"
-              minLength={6}
+              placeholder="Enter password"
+              minLength={4}
               aria-required="true"
-              aria-label="Пароль"
+              aria-label="Password"
             />
             <button
               type="button"
               className="show-password-btn"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((v) => !v)}
               tabIndex={0}
               style={{
@@ -120,13 +120,13 @@ function Login() {
             className="btn btn-primary btn-block"
             disabled={loading}
             aria-busy={loading}
-            aria-label="Войти"
+            aria-label="Login"
           >
-            {loading ? 'Входим...' : 'Войти'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <p className="auth-link">
-          Нет аккаунта? <Link to="/register">Зарегистрируйтесь</Link>
+          Don't have an account? <Link to="/register">Register</Link>
         </p>
       </div>
     </div>

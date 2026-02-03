@@ -28,21 +28,21 @@ function Register() {
     setError('')
     setSuccess('')
     if (!fullName.trim()) {
-      setError('Пожалуйста, введите ваше имя полностью.')
+      setError('Please enter your full name.')
       return
     }
     if (!validateEmail(email)) {
-      setError('Пожалуйста, введите корректный email.')
+      setError('Please enter a valid email address.')
       return
     }
-    if (password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов.')
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters.')
       return
     }
     setLoading(true)
     try {
       const result = await authAPI.register(email, password, fullName)
-      setSuccess('Регистрация успешна! Ожидайте подтверждения администратора.')
+      setSuccess('Registration successful! Awaiting admin approval.')
       setFullName('')
       setEmail('')
       setPassword('')
@@ -50,7 +50,7 @@ function Register() {
         navigate('/login')
       }, 1800)
     } catch (err) {
-      setError(err.message || 'Ошибка регистрации. Попробуйте еще раз.')
+      setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -59,12 +59,12 @@ function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Регистрация в HealthGYM</h2>
+        <h2>Register for HealthGYM</h2>
         {error && <div className="error-message animate-fade" role="alert" aria-live="assertive">{error}</div>}
         {success && <div className="success-message animate-fade" role="status" aria-live="polite">{success}</div>}
-        <form onSubmit={handleSubmit} autoComplete="on" aria-label="Форма регистрации">
+        <form onSubmit={handleSubmit} autoComplete="on" aria-label="Registration form">
           <div className="form-group">
-            <label htmlFor="register-name">ФИО</label>
+            <label htmlFor="register-name">Full Name</label>
             <input
               id="register-name"
               type="text"
@@ -75,9 +75,9 @@ function Register() {
               ref={nameRef}
               autoFocus
               autoComplete="name"
-              placeholder="Ваше полное имя"
+              placeholder="Your full name"
               aria-required="true"
-              aria-label="ФИО"
+              aria-label="Full Name"
             />
           </div>
           <div className="form-group">
@@ -96,7 +96,7 @@ function Register() {
             />
           </div>
           <div className="form-group" style={{ position: 'relative' }}>
-            <label htmlFor="register-password">Пароль</label>
+            <label htmlFor="register-password">Password</label>
             <input
               id="register-password"
               type={showPassword ? 'text' : 'password'}
@@ -105,15 +105,15 @@ function Register() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoComplete="new-password"
-              placeholder="Придумайте пароль"
-              minLength={6}
+              placeholder="Create a password"
+              minLength={4}
               aria-required="true"
-              aria-label="Пароль"
+              aria-label="Password"
             />
             <button
               type="button"
               className="show-password-btn"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((v) => !v)}
               tabIndex={0}
               style={{
@@ -136,13 +136,13 @@ function Register() {
             className="btn btn-primary btn-block"
             disabled={loading}
             aria-busy={loading}
-            aria-label="Зарегистрироваться"
+            aria-label="Register"
           >
-            {loading ? 'Регистрируем...' : 'Зарегистрироваться'}
+            {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
         <p className="auth-link">
-          Уже есть аккаунт? <Link to="/login">Войти</Link>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
     </div>

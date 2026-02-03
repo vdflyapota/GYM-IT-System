@@ -143,7 +143,11 @@ def approve_user():
         auth_service_url = Config.AUTH_SERVICE_URL
         response = requests.patch(
             f"{auth_service_url}/api/auth/sync-approval",
-            json={"user_id": user_id, "is_approved": True},
+            json={
+                "user_id": user_id, 
+                "is_approved": True,
+                "secret_key": app.config.get("SECRET_KEY")
+            },
             timeout=5
         )
         if response.status_code != 200:

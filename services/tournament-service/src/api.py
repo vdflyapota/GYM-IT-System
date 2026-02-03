@@ -113,17 +113,29 @@ def delete_tournament(tournament_id):
 @jwt_required()
 def add_participant(tournament_id):
     """Add participant to tournament"""
+    from flask_jwt_extended import get_jwt_identity, get_jwt
+    
     tournament = Tournament.query.filter_by(id=tournament_id).first()
     
     if not tournament:
         return jsonify({"detail": "Tournament not found"}), 404
     
     payload = request.get_json(silent=True) or {}
-    user_id = payload.get("user_id")
+    # Get user_id from JWT claims
+    jwt_claims = get_jwt()
+    user_id = jwt_claims.get("user_id") or get_jwt_identity()
     name = payload.get("name")
 
     if not name:
         return jsonify({"detail": "Participant name is required"}), 400
+
+    # Check if user already registered
+    existing = Participant.query.filter_by(
+        tournament_id=tournament_id, 
+        user_id=user_id
+    ).first()
+    if existing:
+        return jsonify({"detail": "User already registered for this tournament"}), 409
 
     participant = Participant(
         tournament_id=tournament_id,

@@ -28,12 +28,15 @@ def register():
         return jsonify({"detail": "Email already registered"}), 409
 
     # Create user in auth database
+    # Auto-approve members, require approval for trainers
+    is_approved = role == "member"  # Auto-approve members
+    
     user = User(
         email=email,
         password_hash=generate_password_hash(password),
         role=role if role != "admin" else "member",
         is_active=True,
-        is_approved=False,
+        is_approved=is_approved,
         is_banned=False,
     )
     db.session.add(user)
@@ -64,8 +67,10 @@ def register():
         db.session.commit()
         return jsonify({"detail": f"User service unavailable: {str(e)}"}), 503
 
+    message = "Account created successfully" if is_approved else "Account created; awaiting admin approval"
+    
     return jsonify({
-        "detail": "Account created; awaiting admin approval",
+        "detail": message,
         "user": {"email": user.email, "role": user.role, "is_approved": user.is_approved}
     }), 201
 
@@ -207,9 +212,14 @@ def sync_approval():
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
     is_approved = data.get("is_approved", False)
+    secret_key = data.get("secret_key")
     
     if not user_id:
         return jsonify({"detail": "user_id required"}), 400
+    
+    # Validate secret key for security
+    if secret_key != app.config.get("SECRET_KEY"):
+        return jsonify({"detail": "Unauthorized"}), 401
     
     user = User.query.filter_by(id=user_id).first()
     if not user:
