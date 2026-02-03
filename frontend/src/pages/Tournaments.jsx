@@ -15,7 +15,9 @@ function Tournaments() {
     try {
       setLoading(true)
       const data = await tournamentsAPI.listTournaments()
-      setTournaments(data || [])
+      // Extract tournaments array from response
+      const tournamentsArray = data.tournaments || data || []
+      setTournaments(tournamentsArray)
       setError('')
     } catch (err) {
       setError(err.message || 'Failed to load tournaments')
@@ -69,9 +71,10 @@ function Tournaments() {
           {tournaments.map(tournament => (
             <div key={tournament.id} className="tournament-card">
               <h3>{tournament.name}</h3>
-              <p className="status"><strong>Status:</strong> {tournament.status}</p>
-              <p><strong>Participants:</strong> {tournament.participants}</p>
-              <p><strong>Period:</strong> {tournament.startDate} to {tournament.endDate}</p>
+              <p className="status"><strong>Status:</strong> {tournament.status || 'Active'}</p>
+              <p><strong>Participants:</strong> {tournament.participant_count || tournament.participants || 0}</p>
+              <p><strong>Max Participants:</strong> {tournament.max_participants || 'Unlimited'}</p>
+              <p><strong>Period:</strong> {tournament.start_date || tournament.startDate} to {tournament.end_date || tournament.endDate}</p>
               <button 
                 className="btn btn-primary"
                 onClick={() => handleJoinTournament(tournament.id)}

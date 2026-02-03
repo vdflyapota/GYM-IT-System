@@ -549,6 +549,37 @@ def record_result(tournament_id, bracket_id):
         db.session.rollback()
         return jsonify({"detail": f"Failed to record result: {str(e)}"}), 500
 
+@tournaments_bp.get("/leaderboard")
+def get_leaderboard():
+    """Get tournament leaderboard"""
+    try:
+        # Get all participants with their scores
+        participants = db.session.query(Participant).filter_by(status='approved').all()
+        
+        # Create leaderboard entries
+        leaderboard = []
+        for participant in participants:
+            # Calculate total score from tournament results/wins
+            # For now, use a simple scoring system based on participation
+            score = 100  # Base score for participation
+            
+            # You can add more complex scoring logic here based on match results
+            leaderboard.append({
+                "user_name": participant.name,
+                "total_score": score,
+                "tournaments": 1,  # Each participant is in at least one tournament
+                "user_id": participant.user_id
+            })
+        
+        # Sort by score descending
+        leaderboard.sort(key=lambda x: x["total_score"], reverse=True)
+        
+        return jsonify(leaderboard), 200
+    except Exception as e:
+        import logging
+        logging.error(f"Error fetching leaderboard: {str(e)}")
+        return jsonify({"detail": f"Failed to fetch leaderboard: {str(e)}"}), 500
+
 @tournaments_bp.get("/health")
 def health():
     """Health check endpoint"""
