@@ -90,28 +90,6 @@ function parseJwt(token) {
   }
 }
 
-// Require any authenticated user; redirect to login if missing
-function requireAuth(redirect = "/login.html") {
-  const token = getToken();
-  if (!token) {
-    window.location.replace(redirect);
-    return false;
-  }
-  return true;
-}
-
-// Require a specific role; redirect if missing or not authorized
-function requireRole(role, redirect = "/login.html") {
-  if (!requireAuth(redirect)) return false;
-  const userRole = getRole();
-  if (userRole !== role) {
-    // Not authorized; send to home or login
-    window.location.replace("/");
-    return false;
-  }
-  return true;
-}
-
 // Wrapper around fetch that automatically adds Authorization header
 async function authFetch(url, options = {}) {
   const token = getToken();
