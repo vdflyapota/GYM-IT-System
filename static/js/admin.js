@@ -1,3 +1,8 @@
+// Reports variables - declared at top to avoid temporal dead zone issues
+let reportData = null;
+let roleChart = null;
+let trendChart = null;
+
 // Guard page for admin role
 if (!requireRole("admin")) {
   // requireRole handles redirect
@@ -140,10 +145,6 @@ async function handleResponse(res, successMsg) {
 // ============================================
 // REPORTS FUNCTIONALITY
 // ============================================
-
-let reportData = null;
-let roleChart = null;
-let trendChart = null;
 
 async function loadReports() {
   const alert = document.getElementById("alert");
