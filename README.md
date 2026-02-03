@@ -1,8 +1,8 @@
 # Authors:
-Danial - parzival or vdflyapota
-Yazan - yazan225
-Shattyk - Shhh09git
-Yeldana - personnna
+# Danial - parzival or vdflyapota
+# Yazan - yazan225
+# Shattyk - Shhh09git
+# Yeldana - personnna
 
 # GYM IT System - Microservices Architecture
 
