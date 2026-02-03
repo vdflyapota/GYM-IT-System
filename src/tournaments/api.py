@@ -261,9 +261,53 @@ def submit_result():
 
 @tournaments_bp.get("/leaderboard")
 def leaderboard():
-    # TODO: fetch results from DB and compute
-    sample_results = [
-        {"member_id": 1, "member_name": "Alice", "points": 5},
-        {"member_id": 2, "member_name": "Bob", "points": 1},
-    ]
-    return {"leaderboard": compute_leaderboard(sample_results)}, 200
+    """Get leaderboard with user ranks and points"""
+    # Fetch all participants with user information
+    participants = Participant.query.filter(Participant.user_id.isnot(None)).all()
+    
+    # Compute points: 1 point for participation, 3 points for winning
+    user_points = {}
+    user_info = {}
+    
+    for participant in participants:
+        if not participant.user:
+            continue
+            
+        user_id = participant.user_id
+        if user_id not in user_points:
+            user_points[user_id] = 0
+            user_info[user_id] = {
+                'email': participant.user.email,
+                'full_name': participant.user.full_name
+            }
+        
+        # 1 point for participation
+        user_points[user_id] += 1
+    
+    # Add points for wins
+    brackets = Bracket.query.filter(Bracket.winner_id.isnot(None)).all()
+    for bracket in brackets:
+        if bracket.winner and bracket.winner.user_id:
+            winner_id = bracket.winner.user_id
+            if winner_id in user_points:
+                user_points[winner_id] += 3  # 3 points for a win
+    
+    # Build leaderboard
+    leaderboard_data = []
+    for user_id, points in user_points.items():
+        info = user_info.get(user_id, {})
+        leaderboard_data.append({
+            'user_id': user_id,
+            'user_name': info.get('full_name', 'Unknown'),
+            'email': info.get('email', ''),
+            'points': points
+        })
+    
+    # Sort by points (descending)
+    leaderboard_data.sort(key=lambda x: (-x['points'], x['user_name']))
+    
+    # Add rank
+    for idx, entry in enumerate(leaderboard_data):
+        entry['rank'] = idx + 1
+    
+    return {"leaderboard": leaderboard_data}, 200
