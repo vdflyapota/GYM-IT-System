@@ -75,9 +75,6 @@ def get_me():
         "is_approved": user.is_approved,
         "is_banned": user.is_banned,
         "is_root_admin": user.is_root_admin,
-        "bio": user.bio,
-        "phone": user.phone,
-        "avatar_url": user.avatar_url,
     }), 200
 
 @users_bp.get("/")
@@ -351,12 +348,6 @@ def update_profile():
     # Update allowed fields
     if "full_name" in data:
         user.full_name = data["full_name"]
-    if "bio" in data:
-        user.bio = data["bio"]
-    if "phone" in data:
-        user.phone = data["phone"]
-    if "avatar_url" in data:
-        user.avatar_url = data["avatar_url"]
     
     db.session.commit()
     
@@ -366,9 +357,6 @@ def update_profile():
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
-            "bio": user.bio,
-            "phone": user.phone,
-            "avatar_url": user.avatar_url,
             "role": user.role
         }
     }), 200
@@ -535,8 +523,7 @@ def get_blog_post(slug):
         "excerpt": post.excerpt,
         "author": {
             "id": post.author.id,
-            "full_name": post.author.full_name,
-            "avatar_url": post.author.avatar_url
+            "full_name": post.author.full_name
         } if post.author else None,
         "image_url": post.image_url,
         "published_at": post.published_at.isoformat() if post.published_at else None,

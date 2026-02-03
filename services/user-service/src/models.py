@@ -15,11 +15,7 @@ class User(db.Model):
     is_approved = db.Column(db.Boolean, nullable=False, default=False)
     is_banned = db.Column(db.Boolean, nullable=False, default=False)
     is_root_admin = db.Column(db.Boolean, nullable=False, default=False)
-    bio = db.Column(db.Text, nullable=True)
-    phone = db.Column(db.String(50), nullable=True)
-    avatar_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class Notification(db.Model):
     """User notifications"""
