@@ -111,7 +111,20 @@
     // Load current profile
     async function loadProfile() {
       try {
-        const res = await authFetch('/api/users/me');
+        const token = getToken();
+        if (!token) {
+          showAlert('Not authenticated. Please log in.', 'danger');
+          setTimeout(() => window.location.href = '/login.html', 1500);
+          return;
+        }
+
+        const res = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
         if (res.ok) {
           const user = await res.json();
           document.getElementById('full_name').value = user.full_name || '';
@@ -124,10 +137,17 @@
           if (user.avatar_url) {
             avatarPreview.innerHTML = `<img src="${user.avatar_url}" class="w-100 h-100 rounded-circle" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user fa-3x text-secondary\\'></i>'">`;
           }
+        } else if (res.status === 401) {
+          showAlert('Session expired. Please log in again.', 'danger');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.href = '/login.html', 1500);
         } else {
-          showAlert('Failed to load profile', 'danger');
+          const errorText = await res.text().catch(() => '');
+          showAlert('Failed to load profile: ' + (errorText || res.statusText), 'danger');
         }
       } catch (e) {
+        console.error('Error loading profile:', e);
         showAlert('Error loading profile: ' + e.message, 'danger');
       }
     }
@@ -144,9 +164,18 @@
       };
 
       try {
-        const res = await authFetch('/api/users/me', {
+        const token = getToken();
+        if (!token) {
+          showAlert('Not authenticated. Please log in.', 'danger');
+          return;
+        }
+
+        const res = await fetch('/api/users/me', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' 
+          },
           body: JSON.stringify(data)
         });
 
@@ -154,10 +183,11 @@
           showAlert('Profile updated successfully!', 'success');
           setTimeout(() => window.location.href = '/dashboard.html', 1500);
         } else {
-          const error = await res.json();
+          const error = await res.json().catch(() => ({}));
           showAlert(error.detail || 'Failed to update profile', 'danger');
         }
       } catch (e) {
+        console.error('Error updating profile:', e);
         showAlert('Error: ' + e.message, 'danger');
       }
     });

@@ -201,12 +201,13 @@ async function loadReports() {
 
     for (const u of users) {
       const tr = document.createElement("tr");
+      // Handle created_at gracefully - it might be null or undefined
       const createdDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A';
       tr.innerHTML = `
         <td>${u.id}</td>
-        <td>${u.email}</td>
-        <td>${u.full_name}</td>
-        <td><span class="badge ${badgeClass(u.role)}">${u.role}</span></td>
+        <td>${u.email || 'N/A'}</td>
+        <td>${u.full_name || 'N/A'}</td>
+        <td><span class="badge ${badgeClass(u.role)}">${u.role || 'member'}</span></td>
         <td>${u.is_approved ? "✅" : "❌"}</td>
         <td>${u.is_banned ? "🚫" : "✅"}</td>
         <td>${createdDate}</td>
