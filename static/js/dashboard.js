@@ -25,14 +25,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (userDisplay) userDisplay.textContent = me.full_name || me.email || "Unknown";
       const userRole = me.role || role || "member";
       if (roleBadge) roleBadge.textContent = userRole;
-      
-      // Only show Admin Panel button for admin users
+      window.currentUserName = me.full_name || me.email || "";
+      window.currentUserId = me.id;
       if (userRole === "admin" && adminLink) {
         adminLink.classList.remove("d-none");
       }
-      
-      // Store user ID for real-time updates
-      window.currentUserId = me.id;
     } else {
       // Fallback to role from token
       if (role === "admin" && adminLink) {
@@ -57,34 +54,70 @@ document.addEventListener("DOMContentLoaded", async () => {
   notificationRefreshInterval = setInterval(loadNotifications, 30000); // Every 30 seconds
 });
 
-// Load dashboard statistics
-async function loadDashboardStats() {
+// Load dashboard statistics (and optionally update live leaderboard widget from real-time data)
+async function loadDashboardStats(leaderboardData = null) {
   try {
-    // Load leaderboard to get user's rank and points
-    const leaderboardRes = await authFetch("/api/tournaments/leaderboard");
-    if (leaderboardRes.ok) {
-      const data = await leaderboardRes.json();
-      const currentUserEmail = getEmail();
-      
-      // Find current user in leaderboard
-      const userEntry = data.leaderboard.find(entry => entry.user_name === currentUserEmail || entry.email === currentUserEmail);
-      
-      if (userEntry) {
-        document.getElementById("userRank").textContent = `#${userEntry.rank || '—'}`;
-        document.getElementById("userPoints").textContent = userEntry.points || '0';
-      }
+    let data = null;
+    if (leaderboardData && Array.isArray(leaderboardData)) {
+      data = { leaderboard: leaderboardData };
+    } else {
+      const leaderboardRes = await authFetch("/api/tournaments/leaderboard");
+      if (leaderboardRes.ok) data = await leaderboardRes.json();
     }
-    
-    // Load active tournaments count
-    const tournamentsRes = await authFetch("/api/tournaments");
-    if (tournamentsRes.ok) {
-      const tournaments = await tournamentsRes.json();
-      const activeTournaments = tournaments.filter(t => t.status === 'active').length;
-      document.getElementById("activeTournaments").textContent = activeTournaments;
+    if (data && data.leaderboard) {
+      const currentUserEmail = getEmail();
+      const currentUserName = window.currentUserName || "";
+      const userEntry = data.leaderboard.find(
+        entry => entry.email === currentUserEmail || entry.user_name === currentUserEmail || entry.user_name === currentUserName
+      );
+      if (userEntry) {
+        const rankEl = document.getElementById("userRank");
+        const pointsEl = document.getElementById("userPoints");
+        if (rankEl) rankEl.textContent = "#" + (userEntry.rank != null ? userEntry.rank : "—");
+        if (pointsEl) pointsEl.textContent = String(userEntry.points != null ? userEntry.points : 0);
+      }
+      updateLiveLeaderboard(data.leaderboard);
+    }
+
+    if (!leaderboardData) {
+      const tournamentsRes = await authFetch("/api/tournaments");
+      if (tournamentsRes.ok) {
+        const json = await tournamentsRes.json();
+        const list = Array.isArray(json) ? json : (json.tournaments || []);
+        const activeTournaments = list.filter(t => t.status === "active").length;
+        const el = document.getElementById("activeTournaments");
+        if (el) el.textContent = activeTournaments;
+      }
     }
   } catch (e) {
     console.error("Error loading dashboard stats:", e);
   }
+}
+
+// Update the "Live leaderboard" / "Who is scoring" widget
+function updateLiveLeaderboard(leaderboard) {
+  const container = document.getElementById("liveLeaderboard");
+  if (!container) return;
+  if (!leaderboard || leaderboard.length === 0) {
+    container.innerHTML = '<p class="text-muted small mb-0">No scores yet. Scores update in real time.</p>';
+    return;
+  }
+  const currentUserName = window.currentUserName || "";
+  const currentUserEmail = getEmail();
+  let html = "";
+  leaderboard.slice(0, 10).forEach((entry, i) => {
+    const rank = entry.rank != null ? entry.rank : i + 1;
+    const name = entry.user_name || entry.name || "—";
+    const points = entry.points != null ? entry.points : 0;
+    const isYou = name === currentUserName || entry.email === currentUserEmail;
+    html += `
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light ${isYou ? "bg-light rounded px-2" : ""}">
+        <span class="fw-bold">#${rank}</span>
+        <span>${escapeHtml(name)}${isYou ? ' <span class="badge bg-primary">You</span>' : ""}</span>
+        <span class="text-success fw-bold">${points} pts</span>
+      </div>`;
+  });
+  container.innerHTML = html;
 }
 
 // Load notifications for dropdown
@@ -249,7 +282,7 @@ async function loadLatestBlogPosts() {
 async function markNotificationRead(notificationId) {
   try {
     const res = await authFetch(`/api/users/notifications/${notificationId}/read`, {
-      method: 'PUT'
+      method: "PUT",
     });
     if (res.ok) {
       // Reload notifications
@@ -278,15 +311,14 @@ function initializeRealTimeUpdates() {
     
     socket.on('leaderboard_update', (data) => {
       console.log('Leaderboard update received:', data);
-      // Update stats if user's position changed
-      loadDashboardStats();
+      const list = data && data.leaderboard ? data.leaderboard : null;
+      loadDashboardStats(list);
     });
-    
+
     socket.on('new_notification', (notification) => {
-      console.log('New notification received:', notification);
-      // Show toast
-      showToast(notification.title, notification.message, notification.type);
-      // Reload notifications
+      const forUser = notification.user_id == null || notification.user_id === window.currentUserId;
+      if (!forUser) return;
+      showToast(notification.title || "Notification", notification.message || "", notification.type);
       loadNotifications();
       loadRecentNotifications();
     });

@@ -78,11 +78,32 @@
               <button type="submit" class="btn btn-success btn-lg">
                 <i class="fas fa-save me-2"></i> Save Changes
               </button>
-              <a href="/password-reset.html" class="btn btn-outline-secondary">
-                <i class="fas fa-key me-2"></i> Change Password
-              </a>
             </div>
           </form>
+
+          <hr class="my-4">
+          <h5 class="mb-3"><i class="fas fa-key me-2"></i> Change Password</h5>
+          <div id="passwordAlertContainer"></div>
+          <form id="changePasswordForm">
+            <div class="mb-3">
+              <label class="form-label">Current Password</label>
+              <input type="password" class="form-control" id="current_password" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-control" id="new_password" required minlength="6">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" class="form-control" id="confirm_new_password" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-outline-primary">
+              <i class="fas fa-lock me-2"></i> Update Password
+            </button>
+          </form>
+          <p class="small text-muted mt-2">
+            <a href="/forgot-password.html">Forgot password?</a> Request a reset link by email.
+          </p>
         </div>
       </div>
     </div>
@@ -201,6 +222,45 @@
         </div>
       `;
     }
+
+    function showPasswordAlert(message, type) {
+      const container = document.getElementById('passwordAlertContainer');
+      if (!container) return;
+      container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+    }
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('new_password').value;
+      const confirmNew = document.getElementById('confirm_new_password').value;
+      if (newPassword !== confirmNew) {
+        showPasswordAlert('New password and confirmation do not match.', 'danger');
+        return;
+      }
+      try {
+        const res = await authFetch('/api/users/me/change_password', {
+          method: 'POST',
+          body: JSON.stringify({
+            current_password: document.getElementById('current_password').value,
+            new_password: newPassword
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showPasswordAlert('Password updated successfully.', 'success');
+          document.getElementById('changePasswordForm').reset();
+        } else {
+          showPasswordAlert(data.detail || 'Failed to update password', 'danger');
+        }
+      } catch (err) {
+        showPasswordAlert('Error: ' + (err.message || 'Request failed'), 'danger');
+      }
+    });
 
     loadProfile();
   </script>
