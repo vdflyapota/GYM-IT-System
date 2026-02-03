@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gymit
+  labels:
+    name: gymit
+    environment: production
+    app.kubernetes.io/name: gymit-system
+    app.kubernetes.io/part-of: gymit
