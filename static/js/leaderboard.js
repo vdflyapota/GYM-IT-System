@@ -1,0 +1,457 @@
+// Leaderboard functionality
+const API_BASE = '/api/tournaments';
+
+let leaderboardData = [];
+let currentSort = 'points'; // Default sort by points
+let currentOrder = 'desc';
+let searchQuery = '';
+let roleFilter = 'all';
+let userRole = null; // Current user's role
+
+// Fetch leaderboard data from API
+async function fetchLeaderboard() {
+    console.log('[Leaderboard] Starting fetchLeaderboard...');
+    try {
+        const token = getToken();
+        console.log('[Leaderboard] Token exists:', !!token);
+        if (!token) {
+            console.log('[Leaderboard] No token, redirecting to login');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        console.log('[Leaderboard] Fetching from:', `${API_BASE}/leaderboard`);
+        const response = await fetch(`${API_BASE}/leaderboard`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('[Leaderboard] Response status:', response.status);
+        console.log('[Leaderboard] Response ok:', response.ok);
+
+        if (response.status === 401) {
+            console.log('[Leaderboard] Unauthorized, redirecting to login');
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.log('[Leaderboard] Error data:', errorData);
+            const errorMsg = errorData.detail || errorData.error || errorData.message || 'Failed to load leaderboard';
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        console.log('[Leaderboard] Full response data:', data);
+        console.log('[Leaderboard] Response type:', typeof data);
+        console.log('[Leaderboard] Has leaderboard key:', 'leaderboard' in data);
+        
+        leaderboardData = data.leaderboard || [];
+        console.log('[Leaderboard] Leaderboard data assigned:', leaderboardData);
+        console.log('[Leaderboard] Array length:', leaderboardData.length);
+        if (leaderboardData.length > 0) {
+            console.log('[Leaderboard] First item:', leaderboardData[0]);
+        }
+        
+        // Get user role from first load or fetch it
+        if (!userRole) {
+            console.log('[Leaderboard] Fetching user role...');
+            await getUserRole();
+            console.log('[Leaderboard] User role:', userRole);
+        }
+        
+        console.log('[Leaderboard] Calling updateStats...');
+        updateStats(data);
+        console.log('[Leaderboard] Stats updated, calling renderLeaderboard...');
+        renderLeaderboard();
+        console.log('[Leaderboard] Leaderboard rendered successfully');
+    } catch (error) {
+        console.error('[Leaderboard] ERROR in fetchLeaderboard:', error);
+        console.error('[Leaderboard] Error stack:', error.stack);
+        showToast(error.message || 'Failed to load leaderboard', 'error');
+        // Show empty state
+        const tbody = document.getElementById('leaderboardBody');
+        if (tbody) {
+            const colspan = userRole === 'member' ? 6 : 8;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${colspan}" class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <p class="text-danger">${escapeHtml(error.message)}</p>
+                        <small class="text-muted">Check console for details (F12)</small>
+                    </td>
+                </tr>`;
+        }
+    }
+}
+
+// Get current user role
+async function getUserRole() {
+    try {
+        const token = getToken();
+        const response = await fetch('/api/users/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            userRole = data.role;
+            
+            // Hide role filter for members
+            if (userRole === 'member') {
+                const roleFilterGroup = document.querySelector('.role-filter-group');
+                if (roleFilterGroup) {
+                    roleFilterGroup.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching user role:', error);
+    }
+}
+
+// Update statistics cards
+function updateStats(data) {
+    const totalPlayers = data.total_players || 0;
+    const activePlayers = leaderboardData.filter(p => p.tournaments_played > 0).length;
+    // Safe handling of empty arrays - check length before Math.max
+    const totalTournaments = leaderboardData.length > 0 
+        ? Math.max(...leaderboardData.map(p => p.tournaments_played || 0)) 
+        : 0;
+    // Calculate total matches, handling members who don't have total_wins/total_losses
+    const totalMatches = leaderboardData.reduce((sum, p) => {
+        const wins = p.total_wins || 0;
+        const losses = p.total_losses || 0;
+        return sum + wins + losses;
+    }, 0);
+
+    document.getElementById('totalPlayers').textContent = totalPlayers;
+    document.getElementById('activePlayers').textContent = activePlayers;
+    document.getElementById('totalTournaments').textContent = totalTournaments;
+    document.getElementById('totalMatches').textContent = totalMatches;
+}
+
+// Update table headers based on user role
+function updateTableHeadersForRole() {
+    const thead = document.querySelector('thead tr');
+    if (!thead) return;
+    
+    // Hide Wins and Losses columns for members
+    const winsHeader = document.querySelector('th[data-sort="total_wins"]');
+    const lossesHeader = document.querySelector('th[data-sort="total_losses"]');
+    
+    if (userRole === 'member') {
+        if (winsHeader) winsHeader.style.display = 'none';
+        if (lossesHeader) lossesHeader.style.display = 'none';
+    } else {
+        if (winsHeader) winsHeader.style.display = '';
+        if (lossesHeader) lossesHeader.style.display = '';
+    }
+}
+
+// Render leaderboard table
+function renderLeaderboard() {
+    console.log('[Leaderboard] renderLeaderboard called');
+    const tbody = document.getElementById('leaderboardBody');
+    console.log('[Leaderboard] tbody element:', tbody);
+    if (!tbody) {
+        console.error('[Leaderboard] ERROR: tbody element not found!');
+        return;
+    }
+
+    // Update table headers based on role
+    updateTableHeadersForRole();
+
+    // Calculate colspan based on role (member: 6 columns, trainer/admin: 8 columns)
+    const colspan = userRole === 'member' ? 6 : 8;
+
+    // Check if data is empty
+    console.log('[Leaderboard] leaderboardData:', leaderboardData);
+    console.log('[Leaderboard] leaderboardData length:', leaderboardData ? leaderboardData.length : 'undefined');
+    if (!leaderboardData || leaderboardData.length === 0) {
+        console.log('[Leaderboard] No data, showing empty state');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${colspan}" class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No players found</p>
+                </td>
+            </tr>`;
+        return;
+    }
+
+    // Filter data
+    console.log('[Leaderboard] Filtering data...');
+    let filteredData = leaderboardData.filter(player => {
+        // Search filter
+        const matchesSearch = player.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (player.email && player.email.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        // Role filter
+        const matchesRole = roleFilter === 'all' || player.role === roleFilter;
+        
+        return matchesSearch && matchesRole;
+    });
+    console.log('[Leaderboard] Filtered data length:', filteredData.length);
+
+    // Sort data
+    console.log('[Leaderboard] Sorting by:', currentSort, currentOrder);
+    filteredData.sort((a, b) => {
+        let aVal = a[currentSort];
+        let bVal = b[currentSort];
+        
+        if (currentSort === 'user_name') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        if (currentOrder === 'asc') {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+
+    // Render rows
+    console.log('[Leaderboard] Rendering', filteredData.length, 'rows');
+    tbody.innerHTML = '';
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${colspan}" class="text-center text-muted py-4">
+                    <i class="fas fa-search fa-2x mb-2"></i>
+                    <p>No players found matching your criteria</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    filteredData.forEach((player, index) => {
+        console.log('[Leaderboard] Creating row for player:', player.user_name);
+        const row = createLeaderboardRow(player, index + 1);
+        tbody.appendChild(row);
+    });
+    console.log('[Leaderboard] Render complete');
+}
+
+// Create a leaderboard table row
+function createLeaderboardRow(player, displayRank) {
+    const tr = document.createElement('tr');
+    
+    // Add highlight for top 3
+    if (player.rank === 1) tr.classList.add('table-warning');
+    else if (player.rank === 2) tr.classList.add('table-secondary');
+    else if (player.rank === 3) tr.classList.add('table-light');
+    
+    // Medal for top 3
+    let medal = '';
+    if (player.rank === 1) medal = '🥇';
+    else if (player.rank === 2) medal = '🥈';
+    else if (player.rank === 3) medal = '🥉';
+    
+    // Role badge
+    let roleBadge = '';
+    if (player.role === 'admin') {
+        roleBadge = '<span class="badge bg-danger ms-2">Admin</span>';
+    } else if (player.role === 'trainer') {
+        roleBadge = '<span class="badge bg-primary ms-2">Trainer</span>';
+    } else {
+        roleBadge = '<span class="badge bg-secondary ms-2">Member</span>';
+    }
+    
+    // Build row HTML based on user role and available data
+    // Members don't see emails
+    const emailDisplay = (userRole !== 'member' && player.email) ? 
+        `<br><small class="text-muted">${escapeHtml(player.email)}</small>` : '';
+    
+    const totalWins = player.total_wins !== undefined ? player.total_wins : '-';
+    const totalLosses = player.total_losses !== undefined ? player.total_losses : '-';
+    
+    // Build cells conditionally
+    let rowHtml = `
+        <td class="text-center fw-bold">${displayRank} ${medal}</td>
+        <td>
+            ${escapeHtml(player.user_name)}${roleBadge}
+            ${emailDisplay}
+        </td>
+        <td class="text-center">${player.points}</td>
+        <td class="text-center">${player.tournaments_played}</td>
+        <td class="text-center">
+            <span class="badge bg-success">${player.tournament_wins}</span>
+        </td>`;
+    
+    // Only show Wins and Losses columns for trainers and admins
+    if (userRole !== 'member') {
+        rowHtml += `
+        <td class="text-center">${totalWins}</td>
+        <td class="text-center">${totalLosses}</td>`;
+    }
+    
+    // Win Rate column (shown to everyone)
+    rowHtml += `
+        <td class="text-center">
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar ${player.win_rate >= 50 ? 'bg-success' : 'bg-warning'}" 
+                     role="progressbar" 
+                     style="width: ${player.win_rate}%"
+                     aria-valuenow="${player.win_rate}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                    ${player.win_rate}%
+                </div>
+            </div>
+        </td>
+    `;
+    
+    tr.innerHTML = rowHtml;
+    return tr;
+}
+
+// Sort by column
+function sortBy(column) {
+    if (currentSort === column) {
+        // Toggle order
+        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = column;
+        currentOrder = 'desc';
+    }
+    
+    updateSortIndicators();
+    renderLeaderboard();
+}
+
+// Update sort indicators in table headers
+function updateSortIndicators() {
+    // Remove all existing sort indicators
+    document.querySelectorAll('th.sortable i').forEach(icon => {
+        icon.className = 'fas fa-sort ms-1 text-muted';
+    });
+    
+    // Add indicator to current sort column
+    const currentHeader = document.querySelector(`th.sortable[data-sort="${currentSort}"] i`);
+    if (currentHeader) {
+        currentHeader.className = currentOrder === 'asc' 
+            ? 'fas fa-sort-up ms-1' 
+            : 'fas fa-sort-down ms-1';
+    }
+}
+
+// Search functionality
+function searchLeaderboard() {
+    const searchInput = document.getElementById('searchInput');
+    searchQuery = searchInput ? searchInput.value : '';
+    renderLeaderboard();
+}
+
+// Filter by role
+function filterByRole() {
+    const roleSelect = document.getElementById('roleFilter');
+    roleFilter = roleSelect ? roleSelect.value : 'all';
+    renderLeaderboard();
+}
+
+// Refresh leaderboard
+async function refreshLeaderboard() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-sync fa-spin"></i> Refreshing...';
+    }
+    
+    await fetchLeaderboard();
+    
+    if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh';
+    }
+    
+    showToast('Leaderboard refreshed', 'success');
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '11';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Remove toast after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Check authentication
+    const token = getToken();
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+    
+    // Load leaderboard
+    fetchLeaderboard();
+    
+    // Set up event listeners
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', searchLeaderboard);
+    }
+    
+    const roleFilter = document.getElementById('roleFilter');
+    if (roleFilter) {
+        roleFilter.addEventListener('change', filterByRole);
+    }
+    
+    // Make sortable headers clickable
+    document.querySelectorAll('th.sortable').forEach(header => {
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const sortColumn = header.getAttribute('data-sort');
+            if (sortColumn) {
+                sortBy(sortColumn);
+            }
+        });
+    });
+});

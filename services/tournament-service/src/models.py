@@ -10,6 +10,7 @@ class Tournament(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     start_date = db.Column(db.DateTime(timezone=True), nullable=False)
+    registration_deadline = db.Column(db.DateTime(timezone=True), nullable=True)  # Optional deadline for registration
     max_participants = db.Column(db.Integer, nullable=False)
     tournament_type = db.Column(db.String(50), default="single_elimination", nullable=False)
     status = db.Column(db.String(50), default="setup", nullable=False)
@@ -32,6 +33,7 @@ class Tournament(db.Model):
             "id": self.id,
             "name": self.name,
             "start_date": self.start_date.isoformat() if self.start_date else None,
+            "registration_deadline": self.registration_deadline.isoformat() if self.registration_deadline else None,
             "max_participants": self.max_participants,
             "tournament_type": self.tournament_type,
             "status": self.status,
@@ -128,5 +130,24 @@ def init_db(app):
                         except Exception as e:
                             trans.rollback()
                             print(f"Warning: Could not add status column: {e}")
+            
+            # Check if tournaments table exists
+            if 'tournaments' in inspector.get_table_names():
+                # Get existing columns
+                existing_columns = [col['name'] for col in inspector.get_columns('tournaments')]
+                
+                # Add registration_deadline column if it doesn't exist
+                if 'registration_deadline' not in existing_columns:
+                    with db.engine.connect() as conn:
+                        trans = conn.begin()
+                        try:
+                            conn.execute(text(
+                                "ALTER TABLE tournaments ADD COLUMN registration_deadline TIMESTAMP WITH TIME ZONE"
+                            ))
+                            trans.commit()
+                            print("✓ Added 'registration_deadline' column to tournaments table")
+                        except Exception as e:
+                            trans.rollback()
+                            print(f"Warning: Could not add registration_deadline column: {e}")
         except Exception as e:
             print(f"Warning: Database migration check failed: {e}")

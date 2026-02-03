@@ -123,6 +123,8 @@ async function loadTournaments() {
  */
 async function createTournament() {
     const name = document.getElementById('tName').value;
+    const startDate = document.getElementById('tStartDate').value;
+    const deadline = document.getElementById('tDeadline').value;
     const maxParticipants = parseInt(document.getElementById('tMax').value);
     const tournamentType = document.getElementById('tType') ? document.getElementById('tType').value : 'single_elimination';
 
@@ -131,7 +133,25 @@ async function createTournament() {
         return;
     }
 
+    if (!startDate) {
+        alert('Please select a tournament start date');
+        return;
+    }
+
     try {
+        // Prepare request body
+        const requestBody = {
+            name: name,
+            start_date: new Date(startDate).toISOString(),
+            max_participants: maxParticipants,
+            tournament_type: tournamentType
+        };
+
+        // Add registration_deadline if provided
+        if (deadline) {
+            requestBody.registration_deadline = new Date(deadline).toISOString();
+        }
+
         // Use authFetch from auth.js if available, otherwise fall back to manual token
         const fetchFn = typeof authFetch !== 'undefined' ? authFetch : fetch;
         const headers = typeof authFetch !== 'undefined' ? {} : {
@@ -142,17 +162,7 @@ async function createTournament() {
         const response = await fetchFn(API_BASE + '/', {
             method: 'POST',
             headers: headers,
-            body: typeof authFetch !== 'undefined' ? {
-                name: name,
-                start_date: new Date().toISOString(),
-                max_participants: maxParticipants,
-                tournament_type: tournamentType
-            } : JSON.stringify({
-                name: name,
-                start_date: new Date().toISOString(),
-                max_participants: maxParticipants,
-                tournament_type: tournamentType
-            })
+            body: typeof authFetch !== 'undefined' ? requestBody : JSON.stringify(requestBody)
         });
 
         if (response.ok) {
@@ -173,7 +183,7 @@ async function createTournament() {
             let errorMessage = 'Failed to create tournament';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorData.msg || errorMessage;
             } catch (e) {
                 // If response is not JSON, use status text
                 errorMessage = response.statusText || errorMessage;
@@ -226,11 +236,49 @@ function createTournamentCard(tournament) {
     const participantText = `${tournament.participant_count}/${tournament.max_participants}`;
     const isFull = tournament.participant_count >= tournament.max_participants;
     
+    // Check if registration deadline has passed
+    const now = new Date();
+    const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < now;
+    
+    // Format deadline for display
+    let deadlineDisplay = '';
+    if (tournament.registration_deadline) {
+        const deadline = new Date(tournament.registration_deadline);
+        const timeLeft = deadline - now;
+        
+        if (deadlinePassed) {
+            deadlineDisplay = `
+                <div class="alert alert-danger py-1 px-2 mb-2 small">
+                    <i class="fas fa-clock"></i> Registration Closed
+                </div>
+            `;
+        } else {
+            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            
+            let timeText = '';
+            if (days > 0) {
+                timeText = `${days}d ${hours}h left`;
+            } else if (hours > 0) {
+                timeText = `${hours}h left`;
+            } else {
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                timeText = `${minutes}m left`;
+            }
+            
+            deadlineDisplay = `
+                <div class="alert alert-info py-1 px-2 mb-2 small">
+                    <i class="fas fa-clock"></i> Register by: ${deadline.toLocaleString()} (${timeText})
+                </div>
+            `;
+        }
+    }
+    
     // Only trainers and admins can add participants
     const canAddParticipants = (userRole === 'admin' || userRole === 'trainer') && !isFull;
     
-    // Members can request to join (if tournament is not full and in setup status)
-    const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup';
+    // Members can request to join (if tournament is not full, in setup status, and deadline hasn't passed)
+    const canRequestJoin = (userRole === 'member') && !isFull && tournament.status === 'setup' && !deadlinePassed;
     
     // Trainers and admins can generate bracket when status is setup
     const canGenerateBracket = (userRole === 'admin' || userRole === 'trainer') && tournament.status === 'setup' && tournament.participant_count >= 2;
@@ -252,6 +300,7 @@ function createTournamentCard(tournament) {
                     ${tournament.tournament_type.replace('_', ' ').toUpperCase()} • 
                     ${tournament.max_participants} Participants
                 </p>
+                ${deadlineDisplay}
                 <div class="d-grid gap-2 mt-4">
                     ${canAddParticipants ? `
                         <button class="btn btn-primary btn-sm" onclick="openParticipantModal(${tournament.id})">
@@ -261,6 +310,11 @@ function createTournamentCard(tournament) {
                     ${canRequestJoin ? `
                         <button class="btn btn-success btn-sm" onclick="requestToJoin(${tournament.id})">
                             <i class="fas fa-hand-paper"></i> Request to Join
+                        </button>
+                    ` : ''}
+                    ${deadlinePassed && userRole === 'member' && tournament.status === 'setup' ? `
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-ban"></i> Registration Closed
                         </button>
                     ` : ''}
                     ${canGenerateBracket ? `
@@ -473,7 +527,7 @@ async function addSelectedUsers() {
             let errorMessage = 'Failed to add users';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+                errorMessage = errorData.detail || errorData.error || errorData.message || errorData.msg || errorMessage;
             } catch (e) {
                 errorMessage = response.statusText || errorMessage;
             }
@@ -731,6 +785,33 @@ async function renderBracket(tournament, bracket) {
         title.textContent = `${tournament.name} - Bracket`;
     }
 
+    // Add pause/resume controls for admins
+    let controlsHtml = '';
+    if (userRole === 'admin') {
+        if (tournament.is_paused) {
+            controlsHtml = `
+                <div class="alert alert-warning mb-3 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-pause-circle"></i> <strong>Tournament is PAUSED</strong> - Results cannot be recorded</span>
+                    <button class="btn btn-sm btn-success" onclick="resumeTournament(${tournament.id})">
+                        <i class="fas fa-play"></i> Resume Tournament
+                    </button>
+                </div>`;
+        } else {
+            controlsHtml = `
+                <div class="mb-3 text-end">
+                    <button class="btn btn-sm btn-warning" onclick="pauseTournament(${tournament.id})">
+                        <i class="fas fa-pause"></i> Pause Tournament
+                    </button>
+                </div>`;
+        }
+    } else if (tournament.is_paused) {
+        // Show info to non-admins
+        controlsHtml = `
+            <div class="alert alert-warning mb-3">
+                <i class="fas fa-pause-circle"></i> <strong>Tournament is currently paused</strong>
+            </div>`;
+    }
+
     // Group brackets by round
     const rounds = {};
     bracket.forEach(match => {
@@ -741,7 +822,7 @@ async function renderBracket(tournament, bracket) {
     });
 
     // Build bracket HTML
-    let html = '<div class="bracket-container d-flex justify-content-around align-items-center gap-4" style="overflow-x: auto; min-height: 400px;">';
+    let html = controlsHtml + '<div class="bracket-container d-flex justify-content-around align-items-center gap-4" style="overflow-x: auto; min-height: 400px;">';
 
     Object.keys(rounds).sort((a, b) => parseInt(a) - parseInt(b)).forEach(roundNum => {
         const matches = rounds[roundNum];
@@ -755,11 +836,15 @@ async function renderBracket(tournament, bracket) {
             const p1Name = match.participant1 ? match.participant1.name : 'TBD';
             const p2Name = match.participant2 ? match.participant2.name : 'TBD';
             const isDecided = match.winner_id !== null;
-            const canRecordResult = match.participant1 && match.participant2 && !isDecided;
+            const canRecordResult = match.participant1 && match.participant2 && !isDecided && !tournament.is_paused;
             const winner = isDecided ? (match.winner?.name || '') : null;
             
             // Only trainers and admins can record match results
             const canRecordAsRole = (userRole === 'admin' || userRole === 'trainer');
+            // Only admins can clear results
+            const canClearResult = (userRole === 'admin' && isDecided);
+            
+            const matchDescription = `${escapeHtml(p1Name)} vs ${escapeHtml(p2Name)}`;
             
             console.log('Match:', match.id, 'userRole:', userRole, 'canRecordResult:', canRecordResult, 'canRecordAsRole:', canRecordAsRole);
 
@@ -782,6 +867,10 @@ async function renderBracket(tournament, bracket) {
                     <i class="fas fa-trophy"></i> Record Result
                 </button>` : ''}
                 ${isDecided ? `<div class="text-center small text-success mt-1"><i class="fas fa-check-circle"></i> Winner: ${escapeHtml(winner)}</div>` : ''}
+                ${canClearResult ? `<button class="btn btn-sm btn-outline-danger mt-2 w-100" 
+                    onclick="clearMatchResult(${tournament.id}, ${match.id}, '${matchDescription}')">
+                    <i class="fas fa-undo"></i> Clear Result
+                </button>` : ''}
             </div>`;
         });
 
@@ -998,6 +1087,87 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Pause tournament (Admin only)
+ */
+async function pauseTournament(tournamentId) {
+    if (!confirm('Are you sure you want to PAUSE this tournament?\n\nThis will prevent recording any new match results until resumed.')) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/pause`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            showToast('Tournament paused successfully', 'success');
+            // Always reload the bracket to show updated state
+            await viewBracket(tournamentId);
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to pause tournament', 'error');
+        }
+    } catch (error) {
+        console.error('Error pausing tournament:', error);
+        showToast('Failed to pause tournament', 'error');
+    }
+}
+
+/**
+ * Resume tournament (Admin only)
+ */
+async function resumeTournament(tournamentId) {
+    if (!confirm('Resume this tournament?\n\nMatch results can be recorded again.')) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/resume`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            showToast('Tournament resumed successfully', 'success');
+            // Always reload the bracket to show updated state
+            await viewBracket(tournamentId);
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to resume tournament', 'error');
+        }
+    } catch (error) {
+        console.error('Error resuming tournament:', error);
+        showToast('Failed to resume tournament', 'error');
+    }
+}
+
+/**
+ * Clear match result (Admin only)
+ */
+async function clearMatchResult(tournamentId, bracketId, matchDescription) {
+    if (!confirm(`Clear result for ${matchDescription}?\n\nWARNING: This will also clear any dependent matches in later rounds.\n\nThis action allows re-recording the correct result.`)) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_BASE}/${tournamentId}/bracket/${bracketId}/result`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('Match result cleared successfully', 'success');
+            // Reload bracket view
+            viewBracket(tournamentId);
+        } else {
+            const errorData = await response.json();
+            showToast(errorData.detail || 'Failed to clear result', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing result:', error);
+        showToast('Failed to clear result', 'error');
+    }
 }
 
 // Initialize when DOM is ready

@@ -1,0 +1,140 @@
+---
+# Auth Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: gymit
+  labels:
+    app: auth-service
+    tier: backend
+spec:
+  replicas: 3  # Starting with 3 for 5x growth
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        tier: backend
+    spec:
+      containers:
+      - name: auth-service
+        image: gymit/auth-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8001
+          name: http
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: SECRET_KEY
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: JWT_SECRET_KEY
+        - name: DATABASE_URL
+          value: "postgresql+psycopg2://$(AUTH_DB_USER):$(AUTH_DB_PASSWORD)@auth-db:5432/$(AUTH_DB_NAME)"
+        - name: AUTH_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: AUTH_DB_USER
+        - name: AUTH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: AUTH_DB_PASSWORD
+        - name: AUTH_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: gymit-config
+              key: AUTH_DB_NAME
+        - name: ADMIN_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: ADMIN_EMAIL
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: ADMIN_PASSWORD
+        - name: ADMIN_NAME
+          valueFrom:
+            secretKeyRef:
+              name: gymit-secrets
+              key: ADMIN_NAME
+        envFrom:
+        - configMapRef:
+            name: gymit-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+# Service for Auth Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: gymit
+  labels:
+    app: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# HorizontalPodAutoscaler for Auth Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: gymit
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

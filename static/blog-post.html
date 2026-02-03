@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthGYM | Blog Post</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background-color: #f5f6f8; }
+    .post-header-image { width: 100%; height: 400px; object-fit: cover; border-radius: 15px; }
+    .post-content { background: white; border-radius: 15px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .author-info { display: flex; align-items: center; gap: 15px; }
+    .author-avatar { width: 50px; height: 50px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/"><i class="fas fa-dumbbell me-2"></i>HealthGYM</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="/dashboard.html">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="/blog.html">Blog</a></li>
+          <li class="nav-item"><a class="nav-link" href="/tournaments.html">Tournaments</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    <div class="mb-3">
+      <a href="/blog.html" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i> Back to Blog
+      </a>
+    </div>
+
+    <div id="postContainer">
+      <div class="text-center p-5">
+        <div class="spinner-border text-success" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const slug = urlParams.get('slug');
+
+    if (!slug) {
+      window.location.href = '/blog.html';
+    }
+
+    async function loadPost() {
+      try {
+        const res = await fetch(`/api/users/blog/posts/${slug}`);
+        
+        if (res.ok) {
+          const post = await res.json();
+          displayPost(post);
+        } else if (res.status === 404) {
+          showError('Blog post not found');
+        } else {
+          showError('Failed to load blog post');
+        }
+      } catch (e) {
+        showError('Error: ' + e.message);
+      }
+    }
+
+    function displayPost(post) {
+      const imageUrl = post.image_url || 'https://via.placeholder.com/1200x400?text=Health+%26+Fitness';
+      const date = new Date(post.published_at || post.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const author = post.author || { full_name: 'HealthGYM Team', avatar_url: null };
+      const avatarUrl = author.avatar_url || 'https://via.placeholder.com/50?text=' + author.full_name.charAt(0);
+      
+      document.getElementById('postContainer').innerHTML = `
+        <img src="${imageUrl}" class="post-header-image mb-4" alt="${escapeHtml(post.title)}">
+        
+        <div class="post-content">
+          <h1 class="mb-3">${escapeHtml(post.title)}</h1>
+          
+          <div class="author-info mb-4 pb-4 border-bottom">
+            <img src="${avatarUrl}" class="author-avatar" alt="${escapeHtml(author.full_name)}">
+            <div>
+              <strong>${escapeHtml(author.full_name)}</strong>
+              <div class="text-muted small">
+                <i class="fas fa-calendar me-1"></i> ${date}
+              </div>
+            </div>
+          </div>
+          
+          <div class="post-body">
+            ${formatContent(post.content)}
+          </div>
+          
+          <div class="mt-5 pt-4 border-top">
+            <a href="/blog.html" class="btn btn-success">
+              <i class="fas fa-arrow-left me-2"></i> Back to Blog
+            </a>
+          </div>
+        </div>
+      `;
+      
+      document.title = `HealthGYM | ${post.title}`;
+    }
+
+    function formatContent(content) {
+      // Convert line breaks to paragraphs
+      const paragraphs = content.split('\n\n').filter(p => p.trim());
+      return paragraphs.map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showError(message) {
+      document.getElementById('postContainer').innerHTML = `
+        <div class="alert alert-danger">${message}</div>
+        <a href="/blog.html" class="btn btn-secondary">Back to Blog</a>
+      `;
+    }
+
+    loadPost();
+  </script>
+</body>
+</html>

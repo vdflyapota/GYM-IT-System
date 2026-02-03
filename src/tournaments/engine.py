@@ -17,6 +17,10 @@ def compute_leaderboard(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             names[mid] = name
     board = [{"member_id": mid, "name": names.get(mid, str(mid)), "points": pts} for mid, pts in totals.items()]
     board.sort(key=lambda x: (-x["points"], x["name"]))
+    # Add rank and user_name for API consumers
+    for i, row in enumerate(board, 1):
+        row["rank"] = i
+        row["user_name"] = row["name"]
     return board
 
 

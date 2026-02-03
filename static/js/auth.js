@@ -45,6 +45,34 @@ function logout() {
   window.location.href = "/login.html";
 }
 
+// Require authentication for protected pages
+// If allowedRoles is provided, also check if user has the required role
+function requireAuth(allowedRoles = null) {
+  const token = getToken();
+  
+  // If no token, redirect to login
+  if (!token) {
+    const currentUrl = window.location.pathname + window.location.search;
+    const returnUrl = encodeURIComponent(currentUrl);
+    window.location.href = `/login.html?returnUrl=${returnUrl}`;
+    return false;
+  }
+  
+  // If specific roles are required, check user's role
+  if (allowedRoles) {
+    const userRole = getRole();
+    const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    
+    if (!rolesArray.includes(userRole)) {
+      alert('Access Denied: You do not have permission to access this page.');
+      window.location.href = '/dashboard.html';
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 // Basic JWT payload decode (no signature verification; for UI only)
 function parseJwt(token) {
   try {
@@ -60,28 +88,6 @@ function parseJwt(token) {
   } catch {
     return null;
   }
-}
-
-// Require any authenticated user; redirect to login if missing
-function requireAuth(redirect = "/login.html") {
-  const token = getToken();
-  if (!token) {
-    window.location.replace(redirect);
-    return false;
-  }
-  return true;
-}
-
-// Require a specific role; redirect if missing or not authorized
-function requireRole(role, redirect = "/login.html") {
-  if (!requireAuth(redirect)) return false;
-  const userRole = getRole();
-  if (userRole !== role) {
-    // Not authorized; send to home or login
-    window.location.replace("/");
-    return false;
-  }
-  return true;
 }
 
 // Wrapper around fetch that automatically adds Authorization header

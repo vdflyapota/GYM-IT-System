@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthGYM | Edit Profile</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background-color: #f5f6f8; }
+    .profile-card { background: white; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .avatar-placeholder { width: 120px; height: 120px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/"><i class="fas fa-dumbbell me-2"></i>HealthGYM</a>
+      <div class="d-flex">
+        <a href="/dashboard.html" class="btn btn-outline-light me-2">
+          <i class="fas fa-home me-1"></i> Dashboard
+        </a>
+        <button class="btn btn-outline-light" onclick="logout()">
+          <i class="fas fa-sign-out-alt me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="profile-card p-4">
+          <h2 class="mb-4"><i class="fas fa-user-edit me-2"></i> Edit Profile</h2>
+          
+          <div id="alertContainer"></div>
+
+          <form id="profileForm">
+            <div class="text-center mb-4">
+              <div class="avatar-placeholder mx-auto mb-3" id="avatarPreview">
+                <i class="fas fa-user fa-3x text-secondary"></i>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Avatar URL</label>
+                <input type="url" class="form-control" id="avatar_url" placeholder="https://example.com/avatar.jpg">
+                <small class="text-muted">Enter a URL to your profile picture</small>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="full_name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" disabled>
+                <small class="text-muted">Email cannot be changed</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" class="form-control" id="phone" placeholder="+1234567890">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Bio</label>
+              <textarea class="form-control" id="bio" rows="4" placeholder="Tell us about yourself..."></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <input type="text" class="form-control" id="role" disabled>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i> Save Changes
+              </button>
+            </div>
+          </form>
+
+          <hr class="my-4">
+          <h5 class="mb-3"><i class="fas fa-key me-2"></i> Change Password</h5>
+          <div id="passwordAlertContainer"></div>
+          <form id="changePasswordForm">
+            <div class="mb-3">
+              <label class="form-label">Current Password</label>
+              <input type="password" class="form-control" id="current_password" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-control" id="new_password" required minlength="6">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" class="form-control" id="confirm_new_password" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-outline-primary">
+              <i class="fas fa-lock me-2"></i> Update Password
+            </button>
+          </form>
+          <p class="small text-muted mt-2">
+            <a href="/forgot-password.html">Forgot password?</a> Request a reset link by email.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    if (!requireAuth()) {
+      // Will redirect to login
+    }
+
+    const avatarUrlInput = document.getElementById('avatar_url');
+    const avatarPreview = document.getElementById('avatarPreview');
+
+    // Update avatar preview when URL changes
+    avatarUrlInput.addEventListener('input', (e) => {
+      const url = e.target.value;
+      if (url) {
+        avatarPreview.innerHTML = `<img src="${url}" class="w-100 h-100 rounded-circle" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user fa-3x text-secondary\\'></i>'">`;
+      } else {
+        avatarPreview.innerHTML = '<i class="fas fa-user fa-3x text-secondary"></i>';
+      }
+    });
+
+    // Load current profile
+    async function loadProfile() {
+      try {
+        const token = getToken();
+        if (!token) {
+          showAlert('Not authenticated. Please log in.', 'danger');
+          setTimeout(() => window.location.href = '/login.html', 1500);
+          return;
+        }
+
+        const res = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (res.ok) {
+          const user = await res.json();
+          document.getElementById('full_name').value = user.full_name || '';
+          document.getElementById('email').value = user.email || '';
+          document.getElementById('phone').value = user.phone || '';
+          document.getElementById('bio').value = user.bio || '';
+          document.getElementById('role').value = user.role || 'member';
+          document.getElementById('avatar_url').value = user.avatar_url || '';
+          
+          if (user.avatar_url) {
+            avatarPreview.innerHTML = `<img src="${user.avatar_url}" class="w-100 h-100 rounded-circle" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user fa-3x text-secondary\\'></i>'">`;
+          }
+        } else if (res.status === 401) {
+          showAlert('Session expired. Please log in again.', 'danger');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.href = '/login.html', 1500);
+        } else {
+          const errorText = await res.text().catch(() => '');
+          showAlert('Failed to load profile: ' + (errorText || res.statusText), 'danger');
+        }
+      } catch (e) {
+        console.error('Error loading profile:', e);
+        showAlert('Error loading profile: ' + e.message, 'danger');
+      }
+    }
+
+    // Save profile
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        full_name: document.getElementById('full_name').value,
+        phone: document.getElementById('phone').value,
+        bio: document.getElementById('bio').value,
+        avatar_url: document.getElementById('avatar_url').value
+      };
+
+      try {
+        const token = getToken();
+        if (!token) {
+          showAlert('Not authenticated. Please log in.', 'danger');
+          return;
+        }
+
+        const res = await fetch('/api/users/me', {
+          method: 'PUT',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          showAlert('Profile updated successfully!', 'success');
+          setTimeout(() => window.location.href = '/dashboard.html', 1500);
+        } else {
+          const error = await res.json().catch(() => ({}));
+          showAlert(error.detail || 'Failed to update profile', 'danger');
+        }
+      } catch (e) {
+        console.error('Error updating profile:', e);
+        showAlert('Error: ' + e.message, 'danger');
+      }
+    });
+
+    function showAlert(message, type) {
+      const container = document.getElementById('alertContainer');
+      container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+    }
+
+    function showPasswordAlert(message, type) {
+      const container = document.getElementById('passwordAlertContainer');
+      if (!container) return;
+      container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+    }
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('new_password').value;
+      const confirmNew = document.getElementById('confirm_new_password').value;
+      if (newPassword !== confirmNew) {
+        showPasswordAlert('New password and confirmation do not match.', 'danger');
+        return;
+      }
+      try {
+        const res = await authFetch('/api/users/me/change_password', {
+          method: 'POST',
+          body: JSON.stringify({
+            current_password: document.getElementById('current_password').value,
+            new_password: newPassword
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showPasswordAlert('Password updated successfully.', 'success');
+          document.getElementById('changePasswordForm').reset();
+        } else {
+          showPasswordAlert(data.detail || 'Failed to update password', 'danger');
+        }
+      } catch (err) {
+        showPasswordAlert('Error: ' + (err.message || 'Request failed'), 'danger');
+      }
+    });
+
+    loadProfile();
+  </script>
+</body>
+</html>
