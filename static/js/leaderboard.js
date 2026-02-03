@@ -76,9 +76,10 @@ async function fetchLeaderboard() {
         // Show empty state
         const tbody = document.getElementById('leaderboardBody');
         if (tbody) {
+            const colspan = userRole === 'member' ? 6 : 8;
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center py-5">
+                    <td colspan="${colspan}" class="text-center py-5">
                         <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
                         <p class="text-danger">${escapeHtml(error.message)}</p>
                         <small class="text-muted">Check console for details (F12)</small>
@@ -137,6 +138,24 @@ function updateStats(data) {
     document.getElementById('totalMatches').textContent = totalMatches;
 }
 
+// Update table headers based on user role
+function updateTableHeadersForRole() {
+    const thead = document.querySelector('thead tr');
+    if (!thead) return;
+    
+    // Hide Wins and Losses columns for members
+    const winsHeader = document.querySelector('th[data-sort="total_wins"]');
+    const lossesHeader = document.querySelector('th[data-sort="total_losses"]');
+    
+    if (userRole === 'member') {
+        if (winsHeader) winsHeader.style.display = 'none';
+        if (lossesHeader) lossesHeader.style.display = 'none';
+    } else {
+        if (winsHeader) winsHeader.style.display = '';
+        if (lossesHeader) lossesHeader.style.display = '';
+    }
+}
+
 // Render leaderboard table
 function renderLeaderboard() {
     console.log('[Leaderboard] renderLeaderboard called');
@@ -147,6 +166,12 @@ function renderLeaderboard() {
         return;
     }
 
+    // Update table headers based on role
+    updateTableHeadersForRole();
+
+    // Calculate colspan based on role (member: 6 columns, trainer/admin: 8 columns)
+    const colspan = userRole === 'member' ? 6 : 8;
+
     // Check if data is empty
     console.log('[Leaderboard] leaderboardData:', leaderboardData);
     console.log('[Leaderboard] leaderboardData length:', leaderboardData ? leaderboardData.length : 'undefined');
@@ -154,7 +179,7 @@ function renderLeaderboard() {
         console.log('[Leaderboard] No data, showing empty state');
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center py-5">
+                <td colspan="${colspan}" class="text-center py-5">
                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                     <p class="text-muted">No players found</p>
                 </td>
@@ -201,7 +226,7 @@ function renderLeaderboard() {
     if (filteredData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="${colspan}" class="text-center text-muted py-4">
                     <i class="fas fa-search fa-2x mb-2"></i>
                     <p>No players found matching your criteria</p>
                 </td>
@@ -243,14 +268,16 @@ function createLeaderboardRow(player, displayRank) {
         roleBadge = '<span class="badge bg-secondary ms-2">Member</span>';
     }
     
-    // Build row HTML based on available data
-    const emailDisplay = player.email ? 
+    // Build row HTML based on user role and available data
+    // Members don't see emails
+    const emailDisplay = (userRole !== 'member' && player.email) ? 
         `<br><small class="text-muted">${escapeHtml(player.email)}</small>` : '';
     
     const totalWins = player.total_wins !== undefined ? player.total_wins : '-';
     const totalLosses = player.total_losses !== undefined ? player.total_losses : '-';
     
-    tr.innerHTML = `
+    // Build cells conditionally
+    let rowHtml = `
         <td class="text-center fw-bold">${displayRank} ${medal}</td>
         <td>
             ${escapeHtml(player.user_name)}${roleBadge}
@@ -260,9 +287,17 @@ function createLeaderboardRow(player, displayRank) {
         <td class="text-center">${player.tournaments_played}</td>
         <td class="text-center">
             <span class="badge bg-success">${player.tournament_wins}</span>
-        </td>
+        </td>`;
+    
+    // Only show Wins and Losses columns for trainers and admins
+    if (userRole !== 'member') {
+        rowHtml += `
         <td class="text-center">${totalWins}</td>
-        <td class="text-center">${totalLosses}</td>
+        <td class="text-center">${totalLosses}</td>`;
+    }
+    
+    // Win Rate column (shown to everyone)
+    rowHtml += `
         <td class="text-center">
             <div class="progress" style="height: 20px;">
                 <div class="progress-bar ${player.win_rate >= 50 ? 'bg-success' : 'bg-warning'}" 
@@ -277,6 +312,7 @@ function createLeaderboardRow(player, displayRank) {
         </td>
     `;
     
+    tr.innerHTML = rowHtml;
     return tr;
 }
 
