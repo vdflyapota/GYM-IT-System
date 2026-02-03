@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HealthGYM | Tournaments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .bracket-container {
+            padding: 20px;
+        }
+        .bracket-round {
+            min-width: 250px;
+        }
+        .bracket-match {
+            transition: all 0.2s;
+        }
+        .bracket-match:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+        }
+        .match-participant {
+            padding: 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="dashboard.html"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <span class="navbar-text text-light">Tournament Engine</span>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🏆 Active Tournaments</h2>
+        <!-- Hidden by default, shown only for trainers/admins via JS -->
+        <button id="newTournamentBtn" class="btn btn-success d-none" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="fas fa-plus"></i> New Tournament
+        </button>
+    </div>
+
+    <div class="row g-4" id="tournamentGrid">
+    </div>
+
+    <div id="emptyState" class="text-center py-5 d-none">
+        <i class="fas fa-trophy fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">No tournaments yet</h4>
+        <p>Create one to start the competition!</p>
+    </div>
+</div>
+
+<!-- Create Tournament Modal -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Setup New Tournament</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label class="form-label">Tournament Name</label>
+                        <input type="text" id="tName" class="form-control" placeholder="e.g., Summer Smash" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Max Participants</label>
+                        <select id="tMax" class="form-select">
+                            <option value="4">4 Players</option>
+                            <option value="8" selected>8 Players</option>
+                            <option value="16">16 Players</option>
+                            <option value="32">32 Players</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tournament Type</label>
+                        <select id="tType" class="form-select">
+                            <option value="single_elimination" selected>Single Elimination</option>
+                            <option value="double_elimination">Double Elimination</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Create Tournament</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Participants Modal -->
+<div class="modal fade" id="participantModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Participants</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="participantTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-panel" 
+                                type="button" role="tab">Pending Requests</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-panel" 
+                                type="button" role="tab">Select Users</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" 
+                                type="button" role="tab">Manual Entry</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="participantTabContent">
+                    <!-- Pending requests -->
+                    <div class="tab-pane fade show active" id="pending-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label">Pending join requests:</label>
+                            <div id="pendingList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted">Loading pending requests...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Select from existing users -->
+                    <div class="tab-pane fade" id="users-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label">Select users to add to tournament:</label>
+                            <div id="usersList" style="max-height: 400px; overflow-y: auto;">
+                                <p class="text-muted">Loading users...</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addSelectedUsers()" class="btn btn-primary w-100">Add Selected Users</button>
+                    </div>
+                    
+                    <!-- Manual entry -->
+                    <div class="tab-pane fade" id="manual-panel" role="tabpanel">
+                        <form id="participantForm">
+                            <div class="mb-3">
+                                <label class="form-label">Participant Names (one per line)</label>
+                                <textarea id="participantNames" class="form-control" rows="8" 
+                                          placeholder="Player 1&#10;Player 2&#10;Player 3&#10;..." required></textarea>
+                                <small class="text-muted">Enter one participant name per line</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Add Participants</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bracket Visualization Modal -->
+<div class="modal fade" id="bracketModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Tournament Bracket</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <div id="bracketContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Match Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Match Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="resultForm">
+                    <div class="mb-3">
+                        <label class="form-label">Select Winner</label>
+                        <div id="winnerSelection"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Score (optional)</label>
+                        <input type="text" id="matchScore" class="form-control" placeholder="e.g., 3-2, 6-4">
+                        <small class="text-muted">Enter the match score if applicable</small>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Record Result</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+    // Redirect guests to login
+    if (!requireAuth()) {
+        // requireAuth will redirect to /login.html
+    }
+</script>
+<script src="/js/tournaments.js"></script>
+</body>
+</html>
