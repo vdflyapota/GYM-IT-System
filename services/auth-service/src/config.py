@@ -3,7 +3,6 @@ import os
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "auth-service-secret")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-secret-key")
-    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
     
     # Build DATABASE_URL from components for better security
     DB_USER = os.getenv("DB_USER", "authuser")

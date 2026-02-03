@@ -2,10 +2,6 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from datetime import datetime
 from .models import db, Tournament, Participant, Bracket
-from .config import Config
-import logging
-import requests
-import os
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
@@ -17,20 +13,13 @@ def get_current_user_role():
 def get_current_user_id():
     """Helper to get current user ID from JWT"""
     claims = get_jwt()
-    return claims.get("user_id")
+    return claims.get("sub") or claims.get("user_id")
 
 def require_trainer_or_admin():
     """Helper to check if current user is trainer or admin"""
     role = get_current_user_role()
     if role not in ["trainer", "admin"]:
         return jsonify({"detail": "Trainer or Admin access required"}), 403
-    return None
-
-def require_admin():
-    """Helper to check if current user is admin"""
-    role = get_current_user_role()
-    if role != "admin":
-        return jsonify({"detail": "Admin access required"}), 403
     return None
 
 @tournaments_bp.post("/")
@@ -44,7 +33,6 @@ def create_tournament():
     payload = request.get_json(silent=True) or {}
     name = payload.get("name")
     start_date = payload.get("start_date")
-    registration_deadline = payload.get("registration_deadline")  # Optional
     max_participants = payload.get("max_participants", 8)
     tournament_type = payload.get("tournament_type", "single_elimination")
 
@@ -59,28 +47,10 @@ def create_tournament():
     except (ValueError, AttributeError):
         return jsonify({"detail": "Invalid start date format"}), 400
 
-    # Parse and validate registration_deadline if provided
-    deadline_dt = None
-    if registration_deadline and registration_deadline.strip():  # Check for non-empty string
-        try:
-            deadline_dt = datetime.fromisoformat(registration_deadline.replace("Z", "+00:00"))
-            
-            # Validate deadline is in the future
-            if deadline_dt <= datetime.now(deadline_dt.tzinfo):
-                return jsonify({"detail": "Registration deadline must be in the future"}), 400
-            
-            # Validate deadline is before start date
-            if deadline_dt >= start_dt:
-                return jsonify({"detail": "Registration deadline must be before tournament start date"}), 400
-                
-        except (ValueError, AttributeError):
-            return jsonify({"detail": "Invalid registration deadline format"}), 400
-
     try:
         tournament = Tournament(
             name=name,
             start_date=start_dt,
-            registration_deadline=deadline_dt,
             max_participants=max_participants,
             tournament_type=tournament_type,
             status="setup",
@@ -89,42 +59,10 @@ def create_tournament():
         db.session.add(tournament)
         db.session.commit()
 
-        # Send notifications to all users about new tournament
-        try:
-            import requests
-            user_service_url = os.getenv('USER_SERVICE_URL', 'http://user-service:5001')
-            
-            # Get JWT token from current request
-            from flask_jwt_extended import get_jwt
-            current_claims = get_jwt()
-            current_role = current_claims.get('role', 'member')
-            
-            # Send notification request to user service
-            # Different messages for members vs admins/trainers
-            member_message = f"New tournament '{name}' is now open for registration! Join now to compete."
-            admin_message = f"Tournament '{name}' has been created and is ready for participant registration."
-            
-            notification_data = {
-                "title": "New Tournament Available!",
-                "member_message": member_message,
-                "admin_message": admin_message,
-                "type": "info",
-                "link": f"/tournaments.html?tournament_id={tournament.id}"
-            }
-            
-            # Call user service to create notifications for all users
-            requests.post(
-                f"{user_service_url}/api/users/notifications/broadcast",
-                json=notification_data,
-                timeout=5
-            )
-        except Exception as e:
-            # Don't fail tournament creation if notification fails
-            logging.warning(f"Failed to send tournament notifications: {str(e)}")
-
         return jsonify({"tournament": tournament.to_dict(), "message": "Tournament created successfully"}), 201
     except Exception as e:
         db.session.rollback()
+        import logging
         logging.error(f"Error creating tournament: {str(e)}")
         return jsonify({"detail": f"Failed to create tournament: {str(e)}"}), 500
 
@@ -167,6 +105,7 @@ def delete_tournament(tournament_id):
         return jsonify({"message": "Tournament deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
+        import logging
         logging.error(f"Error deleting tournament: {str(e)}")
         return jsonify({"detail": f"Failed to delete tournament: {str(e)}"}), 500
 
@@ -313,6 +252,8 @@ def add_participants_bulk(tournament_id):
 @jwt_required()
 def get_available_users():
     """Get list of available users from user-service"""
+    import requests
+    from .config import Config
     
     # Only trainers and admins can see available users
     error = require_trainer_or_admin()
@@ -352,6 +293,7 @@ def get_available_users():
             
     except Exception as e:
         # Log error but return empty list to not break the UI
+        import logging
         logging.error(f"Error fetching users from user-service: {str(e)}")
         return jsonify({"users": []}), 200
 
@@ -594,231 +536,6 @@ def record_result(tournament_id, bracket_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"detail": f"Failed to record result: {str(e)}"}), 500
-
-@tournaments_bp.patch("/<int:tournament_id>/pause")
-@jwt_required()
-def pause_tournament(tournament_id):
-    """Pause a tournament - admin only"""
-    error = require_admin()
-    if error:
-        return error
-    
-    tournament = Tournament.query.filter_by(id=tournament_id).first()
-    if not tournament:
-        return jsonify({"detail": "Tournament not found"}), 404
-    
-    # Don't allow pausing completed tournaments
-    if tournament.status == "completed":
-        return jsonify({"detail": "Cannot pause a completed tournament"}), 400
-    
-    try:
-        tournament.is_paused = True
-        db.session.commit()
-        logging.info(f"Tournament {tournament_id} paused by admin")
-        return jsonify({"message": "Tournament paused successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error pausing tournament: {str(e)}")
-        return jsonify({"detail": f"Failed to pause tournament: {str(e)}"}), 500
-
-@tournaments_bp.patch("/<int:tournament_id>/resume")
-@jwt_required()
-def resume_tournament(tournament_id):
-    """Resume a paused tournament - admin only"""
-    
-    error = require_admin()
-    if error:
-        return error
-    
-    tournament = Tournament.query.filter_by(id=tournament_id).first()
-    if not tournament:
-        return jsonify({"detail": "Tournament not found"}), 404
-    
-    try:
-        tournament.is_paused = False
-        db.session.commit()
-        logging.info(f"Tournament {tournament_id} resumed by admin")
-        return jsonify({"message": "Tournament resumed successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error resuming tournament: {str(e)}")
-        return jsonify({"detail": f"Failed to resume tournament: {str(e)}"}), 500
-
-@tournaments_bp.delete("/<int:tournament_id>/bracket/<int:bracket_id>/result")
-@jwt_required()
-def clear_result(tournament_id, bracket_id):
-    """Clear a match result - admin only"""
-    
-    error = require_admin()
-    if error:
-        return error
-    
-    tournament = Tournament.query.filter_by(id=tournament_id).first()
-    if not tournament:
-        return jsonify({"detail": "Tournament not found"}), 404
-    
-    bracket = Bracket.query.filter_by(id=bracket_id, tournament_id=tournament_id).first()
-    if not bracket:
-        return jsonify({"detail": "Match not found"}), 404
-    
-    try:
-        # If this match had a winner who advanced to next round, clear them from next round
-        if bracket.winner_id:
-            # Find next round match where this winner was placed
-            next_round_matches = Bracket.query.filter_by(
-                tournament_id=tournament_id,
-                round=bracket.round + 1
-            ).all()
-            
-            for next_match in next_round_matches:
-                if next_match.participant1_id == bracket.winner_id:
-                    next_match.participant1_id = None
-                    logging.info(f"Cleared participant1 from match {next_match.id}")
-                elif next_match.participant2_id == bracket.winner_id:
-                    next_match.participant2_id = None
-                    logging.info(f"Cleared participant2 from match {next_match.id}")
-        
-        # Clear the result
-        bracket.winner_id = None
-        bracket.score = None
-        
-        db.session.commit()
-        logging.info(f"Match result cleared for bracket {bracket_id} in tournament {tournament_id}")
-        return jsonify({"message": "Match result cleared successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error clearing result: {str(e)}")
-        return jsonify({"detail": f"Failed to clear result: {str(e)}"}), 500
-
-@tournaments_bp.get("/leaderboard")
-@jwt_required()
-def get_leaderboard():
-    """Get tournament leaderboard with player statistics"""
-    try:
-        # Get current user's role for role-based data filtering
-        current_user_role = get_current_user_role()
-        logging.info(f"Leaderboard requested by user role: {current_user_role}")
-        
-        # Get user_service URL from config
-        user_service_url = Config.USER_SERVICE_URL
-        
-        # Fetch all users from user-service
-        auth_header = request.headers.get('Authorization')
-        try:
-            response = requests.get(
-                f"{user_service_url}/api/users/",
-                headers={'Authorization': auth_header},
-                timeout=5
-            )
-            
-            if response.status_code != 200:
-                logging.error(f"Failed to fetch users: {response.status_code}")
-                users_data = []
-            else:
-                users_data = response.json()  # User-service returns list directly, not wrapped in object
-        except Exception as e:
-            logging.error(f"Error fetching users from user-service: {str(e)}")
-            users_data = []
-        
-        logging.info(f"Fetched {len(users_data)} users from user-service")
-        
-        # Calculate statistics for each user
-        leaderboard_data = []
-        
-        for user in users_data:
-            user_id = user.get("id")
-            
-            # Get all participants for this user (both approved and pending to count participations)
-            all_participants = Participant.query.filter_by(user_id=user_id).all()
-            approved_participants = [p for p in all_participants if getattr(p, 'status', 'approved') == 'approved']
-            
-            # Calculate statistics
-            tournaments_played = len(set([p.tournament_id for p in approved_participants]))
-            total_wins = 0
-            total_losses = 0
-            tournament_wins = 0  # Number of tournaments won
-            
-            # Track all matches the user participated in (across all their participant records)
-            matches_participated = set()
-            
-            for participant in approved_participants:
-                # Check if this participant won any matches
-                wins = Bracket.query.filter_by(winner_id=participant.id).all()
-                total_wins += len(wins)
-                
-                # Get all matches this participant was in
-                matches_as_p1 = Bracket.query.filter_by(participant1_id=participant.id).all()
-                matches_as_p2 = Bracket.query.filter_by(participant2_id=participant.id).all()
-                
-                all_user_matches = matches_as_p1 + matches_as_p2
-                
-                # Count losses (participated but didn't win, and match has a winner)
-                for match in all_user_matches:
-                    if match.winner_id and match.winner_id != participant.id:
-                        total_losses += 1
-                
-                # Check if won the tournament (won the final match)
-                tournament = Tournament.query.get(participant.tournament_id)
-                if tournament and tournament.status == "completed":
-                    # Find the final match (highest round number for this tournament)
-                    final_match = Bracket.query.filter_by(
-                        tournament_id=tournament.id
-                    ).order_by(Bracket.round.desc(), Bracket.match_number.desc()).first()
-                    
-                    if final_match and final_match.winner_id == participant.id:
-                        tournament_wins += 1
-            
-            # Calculate win rate
-            total_matches = total_wins + total_losses
-            win_rate = (total_wins / total_matches * 100) if total_matches > 0 else 0
-            
-            # Calculate points (you can adjust the scoring system)
-            points = (tournament_wins * 100) + (total_wins * 10)
-            
-            # Role-based data filtering
-            if current_user_role == "member":
-                # Members see limited data (no emails, no detailed match stats)
-                leaderboard_data.append({
-                    "user_id": user_id,
-                    "user_name": user.get("full_name"),
-                    "role": user.get("role"),
-                    "tournaments_played": tournaments_played,
-                    "tournament_wins": tournament_wins,
-                    "win_rate": round(win_rate, 1),
-                    "points": points
-                })
-            else:
-                # Trainers and Admins see full data
-                leaderboard_data.append({
-                    "user_id": user_id,
-                    "user_name": user.get("full_name"),
-                    "email": user.get("email"),
-                    "role": user.get("role"),
-                    "tournaments_played": tournaments_played,
-                    "tournament_wins": tournament_wins,
-                    "total_wins": total_wins,
-                    "total_losses": total_losses,
-                    "win_rate": round(win_rate, 1),
-                    "points": points
-                })
-        
-        # Sort by points (descending), then by tournament wins, then by total wins
-        leaderboard_data.sort(key=lambda x: (x["points"], x.get("tournament_wins", 0), x.get("total_wins", 0)), reverse=True)
-        
-        # Add ranks
-        for index, entry in enumerate(leaderboard_data):
-            entry["rank"] = index + 1
-        
-        logging.info(f"Returning leaderboard with {len(leaderboard_data)} entries")
-        
-        return jsonify({
-            "leaderboard": leaderboard_data,
-            "total_players": len(leaderboard_data)
-        }), 200
-        
-    except Exception as e:
-        logging.error(f"Error generating leaderboard: {str(e)}")
-        return jsonify({"detail": f"Failed to generate leaderboard: {str(e)}"}), 500
 
 @tournaments_bp.get("/health")
 def health():

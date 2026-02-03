@@ -2,10 +2,10 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from ..auth.rbac import require_role
 from .engine import compute_leaderboard, generate_single_elimination_bracket, generate_double_elimination_bracket
-from ..notifications.events import emit_leaderboard_update, emit_new_notification
+from ..notifications.events import emit_leaderboard_update
 from src.common.db import db
 from .models import Tournament, Participant, Bracket
-from src.users.models import User, Notification
+from src.users.models import User
 from datetime import datetime
 
 tournaments_bp = Blueprint("tournaments", __name__)
@@ -256,44 +256,7 @@ def submit_result():
     ]
     leaderboard = compute_leaderboard(sample_results)
     emit_leaderboard_update(leaderboard)
-    _create_leaderboard_notifications(leaderboard)
     return {"message": "result recorded"}, 200
-
-
-def _create_leaderboard_notifications(leaderboard):
-    """Create a notification for each user who appears on the leaderboard (by matching name to user)."""
-    if not leaderboard:
-        return
-    for entry in leaderboard:
-        user_name = entry.get("user_name") or entry.get("name")
-        rank = entry.get("rank")
-        points = entry.get("points", 0)
-        user = User.query.filter_by(full_name=user_name).first()
-        if not user:
-            continue
-        title = "Leaderboard update"
-        message = f"You are #{rank} with {points} points."
-        notif = Notification(
-            user_id=user.id,
-            title=title,
-            message=message,
-            type="info",
-        )
-        db.session.add(notif)
-    try:
-        db.session.commit()
-        for entry in leaderboard:
-            user_name = entry.get("user_name") or entry.get("name")
-            user = User.query.filter_by(full_name=user_name).first()
-            if user:
-                emit_new_notification(
-                    user.id,
-                    "Leaderboard update",
-                    f"You are #{entry.get('rank')} with {entry.get('points', 0)} points.",
-                    "info",
-                )
-    except Exception:
-        db.session.rollback()
 
 
 @tournaments_bp.get("/leaderboard")
@@ -303,5 +266,4 @@ def leaderboard():
         {"member_id": 1, "member_name": "Alice", "points": 5},
         {"member_id": 2, "member_name": "Bob", "points": 1},
     ]
-    board = compute_leaderboard(sample_results)
-    return {"leaderboard": board}, 200
+    return {"leaderboard": compute_leaderboard(sample_results)}, 200

@@ -6,11 +6,10 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         # Import models so SQLAlchemy knows them before create_all
-        from src.users.models import User, Notification, PasswordResetToken  # noqa: F401
+        from src.users.models import User  # noqa: F401
         from src.tournaments.models import Tournament, Participant, Bracket  # noqa: F401
         db.create_all()
         _ensure_columns(app)
-        _ensure_user_profile_columns(app)
         _ensure_bootstrap_admin(app)
 
 def _ensure_columns(app):
@@ -26,19 +25,6 @@ def _ensure_columns(app):
         app.logger.info("Ensured users approval/root columns exist.")
     except Exception as e:
         app.logger.warning(f"Could not ensure schema columns: {e}")
-
-
-def _ensure_user_profile_columns(app):
-    """Add optional profile columns to users table if missing."""
-    from sqlalchemy import text
-    for col, spec in [("phone", "VARCHAR(64)"), ("bio", "TEXT"), ("avatar_url", "VARCHAR(512)")]:
-        try:
-            with db.engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {spec}"))
-        except Exception:
-            pass  # column may already exist
-    app.logger.info("Ensured user profile columns exist.")
-
 
 def _ensure_bootstrap_admin(app):
     import os
