@@ -49,6 +49,7 @@ def create_user():
         full_name=full_name,
         role=role,
         is_approved=is_approved,
+        is_active=True,
         is_banned=False,
         is_root_admin=False,
     )
@@ -73,8 +74,12 @@ def get_me():
         "full_name": user.full_name,
         "role": user.role,
         "is_approved": user.is_approved,
+        "is_active": user.is_active,
         "is_banned": user.is_banned,
         "is_root_admin": user.is_root_admin,
+        "bio": user.bio,
+        "phone": user.phone,
+        "avatar_url": user.avatar_url,
     }), 200
 
 @users_bp.get("/")
@@ -93,6 +98,7 @@ def list_users():
             "full_name": u.full_name,
             "role": u.role,
             "is_approved": u.is_approved,
+            "is_active": u.is_active,
             "is_banned": u.is_banned,
             "is_root_admin": u.is_root_admin,
         }

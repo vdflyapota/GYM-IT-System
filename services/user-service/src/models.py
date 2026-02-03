@@ -13,6 +13,7 @@ class User(db.Model):
     full_name = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(32), nullable=False, default="member")
     is_approved = db.Column(db.Boolean, nullable=False, default=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_banned = db.Column(db.Boolean, nullable=False, default=False)
     is_root_admin = db.Column(db.Boolean, nullable=False, default=False)
     bio = db.Column(db.Text, nullable=True)
