@@ -61,11 +61,28 @@ def create_user():
 @jwt_required()
 def get_me():
     """Get current user profile"""
+    from flask_jwt_extended import get_jwt
+    
     email = get_jwt_identity()
     user = User.query.filter_by(email=email).first()
     
+    # Auto-create user if doesn't exist (handles database sync issues)
     if not user:
-        return jsonify({"detail": "User not found"}), 404
+        # Get additional info from JWT claims
+        claims = get_jwt()
+        role = claims.get("role", "member")
+        
+        # Create a minimal user record
+        user = User(
+            email=email,
+            full_name=email.split('@')[0].title(),  # Use email prefix as name
+            role=role,
+            is_approved=True,  # Assume approved since they can log in
+            is_banned=False,
+            is_root_admin=(role == "admin"),
+        )
+        db.session.add(user)
+        db.session.commit()
     
     return jsonify({
         "id": user.id,
