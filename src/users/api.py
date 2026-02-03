@@ -335,7 +335,7 @@ def create_blog_post():
     from flask_jwt_extended import get_jwt_identity
     from src.users.models import BlogPost
     from src.common.db import db
-    from datetime import datetime
+    from datetime import datetime, timezone
     import re
     
     email = get_jwt_identity()
@@ -353,13 +353,16 @@ def create_blog_post():
     if not title or not content:
         return jsonify({"detail": "Title and content are required"}), 400
     
-    # Generate slug from title
+    # Generate slug from title (basic ASCII-safe version)
     slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
     
-    # Ensure unique slug
+    # Ensure unique slug by checking existing and appending counter if needed
     existing = BlogPost.query.filter_by(slug=slug).first()
     if existing:
-        slug = f"{slug}-{int(datetime.now().timestamp())}"
+        counter = 2
+        while BlogPost.query.filter_by(slug=f"{slug}-{counter}").first():
+            counter += 1
+        slug = f"{slug}-{counter}"
     
     post = BlogPost(
         title=title,
@@ -369,7 +372,7 @@ def create_blog_post():
         image_url=image_url,
         author_id=user.id,
         published=published,
-        published_at=datetime.now() if published else None
+        published_at=datetime.now(timezone.utc) if published else None
     )
     
     db.session.add(post)
@@ -389,7 +392,7 @@ def update_blog_post(post_id):
     """Update blog post (admin only)"""
     from src.users.models import BlogPost
     from src.common.db import db
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     post = BlogPost.query.get(post_id)
     if not post:
@@ -410,7 +413,7 @@ def update_blog_post(post_id):
         post.published = data["published"]
         # Set published_at when first published
         if post.published and not was_published:
-            post.published_at = datetime.now()
+            post.published_at = datetime.now(timezone.utc)
     
     db.session.commit()
     

@@ -47,6 +47,6 @@ class BlogPost(db.Model):
     published = db.Column(db.Boolean, nullable=False, default=False)
     published_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=True, onupdate=func.now())
     
     author = db.relationship('User', backref='blog_posts')

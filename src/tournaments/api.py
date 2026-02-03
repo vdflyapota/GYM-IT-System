@@ -265,7 +265,7 @@ def leaderboard():
     # Fetch all participants with user information
     participants = Participant.query.filter(Participant.user_id.isnot(None)).all()
     
-    # Compute points: 1 point for participation, 3 points for winning
+    # Compute points: 1 point per tournament participation, 3 points per win
     user_points = {}
     user_info = {}
     
@@ -281,7 +281,7 @@ def leaderboard():
                 'full_name': participant.user.full_name
             }
         
-        # 1 point for participation
+        # 1 point per tournament participation
         user_points[user_id] += 1
     
     # Add points for wins
@@ -290,7 +290,7 @@ def leaderboard():
         if bracket.winner and bracket.winner.user_id:
             winner_id = bracket.winner.user_id
             if winner_id in user_points:
-                user_points[winner_id] += 3  # 3 points for a win
+                user_points[winner_id] += 3  # 3 points per win
     
     # Build leaderboard
     leaderboard_data = []
