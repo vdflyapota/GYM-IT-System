@@ -103,5 +103,12 @@
             </div>
         </div>
     </div>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Require authentication to view classes
+        if (!requireAuth()) {
+            // requireAuth will redirect to /login.html
+        }
+    </script>
 </body>
 </html>

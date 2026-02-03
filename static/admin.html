@@ -81,8 +81,8 @@
   <script src="/js/auth.js"></script>
   <script>
     // Redirect guests to login
-    if (!requireAuth()) {
-        // requireAuth will redirect to /login.html
+    if (!requireAuth('admin')) {
+        // requireAuth will redirect to /login.html or dashboard.html for non-admins
     }
   </script>
   <script src="/js/admin.js"></script>

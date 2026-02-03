@@ -187,5 +187,12 @@
 
     loadChallenges();
 </script>
+<script src="/js/auth.js"></script>
+<script>
+    // Require authentication to view challenges
+    if (!requireAuth()) {
+        // requireAuth will redirect to /login.html
+    }
+</script>
 </body>
 </html>
