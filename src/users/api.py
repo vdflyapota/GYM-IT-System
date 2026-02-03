@@ -186,3 +186,250 @@ def reset_password():
         return jsonify({"detail": "Operation not permitted on the root admin"}), 403
     service.reset_password(user, new_password)
     return jsonify({"detail": "Password updated"}), 200
+
+
+# ============ Notifications API ============
+
+@users_bp.get("/notifications")
+@jwt_required()
+def get_notifications():
+    """Get user notifications"""
+    from flask_jwt_extended import get_jwt_identity
+    from src.users.models import Notification
+    
+    email = get_jwt_identity()
+    user = repository.get_by_email(email)
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    limit = request.args.get("limit", 10, type=int)
+    unread_only = request.args.get("unread_only", "false").lower() == "true"
+    
+    query = Notification.query.filter_by(user_id=user.id)
+    if unread_only:
+        query = query.filter_by(is_read=False)
+    
+    notifications = query.order_by(Notification.created_at.desc()).limit(limit).all()
+    
+    return jsonify([{
+        "id": n.id,
+        "title": n.title,
+        "message": n.message,
+        "type": n.type,
+        "is_read": n.is_read,
+        "link": n.link,
+        "created_at": n.created_at.isoformat() if n.created_at else None
+    } for n in notifications]), 200
+
+
+@users_bp.put("/notifications/<int:notification_id>/read")
+@jwt_required()
+def mark_notification_read(notification_id):
+    """Mark notification as read"""
+    from flask_jwt_extended import get_jwt_identity
+    from src.users.models import Notification
+    from src.common.db import db
+    
+    email = get_jwt_identity()
+    user = repository.get_by_email(email)
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    notification = Notification.query.filter_by(id=notification_id, user_id=user.id).first()
+    
+    if not notification:
+        return jsonify({"detail": "Notification not found"}), 404
+    
+    notification.is_read = True
+    db.session.commit()
+    
+    return jsonify({"detail": "Notification marked as read"}), 200
+
+
+@users_bp.delete("/notifications/<int:notification_id>")
+@jwt_required()
+def delete_notification(notification_id):
+    """Delete notification"""
+    from flask_jwt_extended import get_jwt_identity
+    from src.users.models import Notification
+    from src.common.db import db
+    
+    email = get_jwt_identity()
+    user = repository.get_by_email(email)
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    notification = Notification.query.filter_by(id=notification_id, user_id=user.id).first()
+    
+    if not notification:
+        return jsonify({"detail": "Notification not found"}), 404
+    
+    db.session.delete(notification)
+    db.session.commit()
+    
+    return jsonify({"detail": "Notification deleted"}), 200
+
+
+# ============ Blog API ============
+
+@users_bp.get("/blog/posts")
+def get_blog_posts():
+    """Get published blog posts (public)"""
+    from src.users.models import BlogPost, User
+    
+    limit = request.args.get("limit", 10, type=int)
+    
+    posts = BlogPost.query.filter_by(published=True).order_by(
+        BlogPost.published_at.desc()
+    ).limit(limit).all()
+    
+    return jsonify([{
+        "id": p.id,
+        "title": p.title,
+        "slug": p.slug,
+        "excerpt": p.excerpt,
+        "content": p.content,
+        "image_url": p.image_url,
+        "published_at": p.published_at.isoformat() if p.published_at else None,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+        "author": {
+            "id": p.author.id,
+            "full_name": p.author.full_name,
+            "email": p.author.email
+        } if p.author else None
+    } for p in posts]), 200
+
+
+@users_bp.get("/blog/posts/<slug>")
+def get_blog_post(slug):
+    """Get single blog post by slug"""
+    from src.users.models import BlogPost
+    
+    post = BlogPost.query.filter_by(slug=slug, published=True).first()
+    
+    if not post:
+        return jsonify({"detail": "Blog post not found"}), 404
+    
+    return jsonify({
+        "id": post.id,
+        "title": post.title,
+        "slug": post.slug,
+        "content": post.content,
+        "excerpt": post.excerpt,
+        "image_url": post.image_url,
+        "published_at": post.published_at.isoformat() if post.published_at else None,
+        "created_at": post.created_at.isoformat() if post.created_at else None,
+        "author": {
+            "id": post.author.id,
+            "full_name": post.author.full_name,
+            "email": post.author.email
+        } if post.author else None
+    }), 200
+
+
+@users_bp.post("/blog/posts")
+@jwt_required()
+@require_role("admin")
+def create_blog_post():
+    """Create blog post (admin only)"""
+    from flask_jwt_extended import get_jwt_identity
+    from src.users.models import BlogPost
+    from src.common.db import db
+    from datetime import datetime
+    import re
+    
+    email = get_jwt_identity()
+    user = repository.get_by_email(email)
+    if not user:
+        return jsonify({"detail": "User not found"}), 404
+    
+    data = request.get_json(silent=True) or {}
+    title = data.get("title", "").strip()
+    content = data.get("content", "").strip()
+    excerpt = data.get("excerpt", "").strip()
+    image_url = data.get("image_url", "").strip()
+    published = data.get("published", False)
+    
+    if not title or not content:
+        return jsonify({"detail": "Title and content are required"}), 400
+    
+    # Generate slug from title
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    
+    # Ensure unique slug
+    existing = BlogPost.query.filter_by(slug=slug).first()
+    if existing:
+        slug = f"{slug}-{int(datetime.now().timestamp())}"
+    
+    post = BlogPost(
+        title=title,
+        slug=slug,
+        content=content,
+        excerpt=excerpt,
+        image_url=image_url,
+        author_id=user.id,
+        published=published,
+        published_at=datetime.now() if published else None
+    )
+    
+    db.session.add(post)
+    db.session.commit()
+    
+    return jsonify({
+        "detail": "Blog post created",
+        "id": post.id,
+        "slug": post.slug
+    }), 201
+
+
+@users_bp.put("/blog/posts/<int:post_id>")
+@jwt_required()
+@require_role("admin")
+def update_blog_post(post_id):
+    """Update blog post (admin only)"""
+    from src.users.models import BlogPost
+    from src.common.db import db
+    from datetime import datetime
+    
+    post = BlogPost.query.get(post_id)
+    if not post:
+        return jsonify({"detail": "Blog post not found"}), 404
+    
+    data = request.get_json(silent=True) or {}
+    
+    if "title" in data:
+        post.title = data["title"].strip()
+    if "content" in data:
+        post.content = data["content"].strip()
+    if "excerpt" in data:
+        post.excerpt = data["excerpt"].strip()
+    if "image_url" in data:
+        post.image_url = data["image_url"].strip()
+    if "published" in data:
+        was_published = post.published
+        post.published = data["published"]
+        # Set published_at when first published
+        if post.published and not was_published:
+            post.published_at = datetime.now()
+    
+    db.session.commit()
+    
+    return jsonify({"detail": "Blog post updated"}), 200
+
+
+@users_bp.delete("/blog/posts/<int:post_id>")
+@jwt_required()
+@require_role("admin")
+def delete_blog_post(post_id):
+    """Delete blog post (admin only)"""
+    from src.users.models import BlogPost
+    from src.common.db import db
+    
+    post = BlogPost.query.get(post_id)
+    if not post:
+        return jsonify({"detail": "Blog post not found"}), 404
+    
+    db.session.delete(post)
+    db.session.commit()
+    
+    return jsonify({"detail": "Blog post deleted"}), 200

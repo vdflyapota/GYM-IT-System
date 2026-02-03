@@ -6,7 +6,7 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         # Import models so SQLAlchemy knows them before create_all
-        from src.users.models import User  # noqa: F401
+        from src.users.models import User, Notification, BlogPost  # noqa: F401
         from src.tournaments.models import Tournament, Participant, Bracket  # noqa: F401
         db.create_all()
         _ensure_columns(app)
