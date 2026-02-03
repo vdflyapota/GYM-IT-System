@@ -54,7 +54,7 @@ def create_tournament():
 def list_tournaments():
     """List all tournaments"""
     tournaments = Tournament.query.order_by(Tournament.created_at.desc()).all()
-    return {"tournaments": [t.to_dict() for t in tournaments]}, 200
+    return [t.to_dict() for t in tournaments], 200
 
 
 @tournaments_bp.get("/<int:tournament_id>")
