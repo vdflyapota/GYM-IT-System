@@ -227,6 +227,101 @@ def delete_user(user_id):
     
     return jsonify({"detail": "User deleted"}), 200
 
+@users_bp.get("/reports/statistics")
+@jwt_required()
+def get_user_statistics():
+    """Get user statistics for reports - admin only"""
+    error = require_admin()
+    if error:
+        return error
+    
+    from datetime import datetime, timedelta
+    from sqlalchemy import func, extract
+    
+    # Get query parameters for filtering
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    role_filter = request.args.get('role')
+    
+    # Base query
+    query = User.query
+    
+    # Apply date filters if provided
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.filter(User.created_at >= start_dt)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            query = query.filter(User.created_at <= end_dt)
+        except ValueError:
+            pass
+    
+    # Apply role filter if provided
+    if role_filter and role_filter != 'all':
+        query = query.filter(User.role == role_filter)
+    
+    # Get all users matching filters
+    users = query.all()
+    
+    # Calculate statistics
+    total_users = len(users)
+    
+    # Count by role
+    role_counts = db.session.query(
+        User.role,
+        func.count(User.id)
+    ).group_by(User.role).all()
+    
+    by_role = {role: count for role, count in role_counts}
+    
+    # Count by approval status
+    approved_count = User.query.filter_by(is_approved=True).count()
+    pending_count = User.query.filter_by(is_approved=False).count()
+    
+    # Count by ban status
+    banned_count = User.query.filter_by(is_banned=True).count()
+    active_count = total_users - banned_count
+    
+    # Get registration trend (last 30 days)
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    recent_users = User.query.filter(User.created_at >= thirty_days_ago).all()
+    
+    # Group by date
+    registrations_by_date = {}
+    for user in recent_users:
+        date_key = user.created_at.strftime('%Y-%m-%d')
+        registrations_by_date[date_key] = registrations_by_date.get(date_key, 0) + 1
+    
+    # Get detailed user list
+    user_list = []
+    for u in users:
+        user_list.append({
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "role": u.role,
+            "is_approved": u.is_approved,
+            "is_banned": u.is_banned,
+            "is_root_admin": u.is_root_admin,
+            "created_at": u.created_at.isoformat() if u.created_at else None
+        })
+    
+    return jsonify({
+        "total_users": total_users,
+        "by_role": by_role,
+        "approved_users": approved_count,
+        "pending_users": pending_count,
+        "active_users": active_count,
+        "banned_users": banned_count,
+        "registrations_by_date": registrations_by_date,
+        "users": user_list
+    }), 200
+
 @users_bp.get("/health")
 def health():
     """Health check endpoint"""
