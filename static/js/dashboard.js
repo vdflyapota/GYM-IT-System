@@ -89,6 +89,11 @@ async function loadDashboardStats() {
 
 // Load notifications for dropdown
 async function loadNotifications() {
+  const dropdown = document.getElementById("notificationDropdown");
+  const badge = document.getElementById("notificationBadge");
+  
+  if (!dropdown) return;
+  
   try {
     const res = await authFetch("/api/users/notifications?limit=10");
     if (res.ok) {
@@ -96,16 +101,16 @@ async function loadNotifications() {
       
       // Update badge
       const unreadCount = notifications.filter(n => !n.is_read).length;
-      const badge = document.getElementById("notificationBadge");
-      if (unreadCount > 0) {
-        badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
-        badge.style.display = 'flex';
-      } else {
-        badge.style.display = 'none';
+      if (badge) {
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
       }
       
       // Update dropdown
-      const dropdown = document.getElementById("notificationDropdown");
       if (notifications.length === 0) {
         dropdown.innerHTML = `
           <li><h6 class="dropdown-header">Notifications</h6></li>
@@ -138,20 +143,37 @@ async function loadNotifications() {
         
         dropdown.innerHTML = html;
       }
+    } else {
+      // API error - show friendly message
+      dropdown.innerHTML = `
+        <li><h6 class="dropdown-header">Notifications</h6></li>
+        <li><hr class="dropdown-divider"></li>
+        <li class="px-3 py-2 text-center text-muted">No notifications</li>
+      `;
+      if (badge) badge.style.display = 'none';
     }
   } catch (e) {
     console.error("Error loading notifications:", e);
+    // On error, show friendly message instead of leaving "Loading..."
+    dropdown.innerHTML = `
+      <li><h6 class="dropdown-header">Notifications</h6></li>
+      <li><hr class="dropdown-divider"></li>
+      <li class="px-3 py-2 text-center text-muted">No notifications</li>
+    `;
+    if (badge) badge.style.display = 'none';
   }
 }
 
 // Load recent notifications for dashboard widget
 async function loadRecentNotifications() {
+  const container = document.getElementById("recentNotifications");
+  if (!container) return;
+  
   try {
     const res = await authFetch("/api/users/notifications?limit=5");
     if (res.ok) {
       const notifications = await res.json();
       
-      const container = document.getElementById("recentNotifications");
       if (notifications.length === 0) {
         container.innerHTML = '<p class="text-muted text-center py-3">No notifications yet</p>';
       } else {
@@ -173,20 +195,27 @@ async function loadRecentNotifications() {
         });
         container.innerHTML = html;
       }
+    } else {
+      // API error - show friendly message
+      container.innerHTML = '<p class="text-muted text-center py-3">No notifications yet</p>';
     }
   } catch (e) {
     console.error("Error loading recent notifications:", e);
+    // On error, show friendly message instead of leaving "Loading..."
+    container.innerHTML = '<p class="text-muted text-center py-3">No notifications yet</p>';
   }
 }
 
 // Load latest blog posts
 async function loadLatestBlogPosts() {
+  const container = document.getElementById("latestBlogPosts");
+  if (!container) return;
+  
   try {
     const res = await fetch("/api/users/blog/posts?limit=3");
     if (res.ok) {
       const posts = await res.json();
       
-      const container = document.getElementById("latestBlogPosts");
       if (posts.length === 0) {
         container.innerHTML = '<p class="text-muted text-center py-3">No blog posts yet</p>';
       } else {
@@ -205,9 +234,14 @@ async function loadLatestBlogPosts() {
         });
         container.innerHTML = html;
       }
+    } else {
+      // API error - show friendly message
+      container.innerHTML = '<p class="text-muted text-center py-3">No blog posts yet</p>';
     }
   } catch (e) {
     console.error("Error loading blog posts:", e);
+    // On error, show friendly message instead of leaving "Loading..."
+    container.innerHTML = '<p class="text-muted text-center py-3">No blog posts yet</p>';
   }
 }
 

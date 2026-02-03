@@ -47,7 +47,7 @@ async function loadUsers() {
     const res = await authFetch("/api/users/");
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Failed: ${res.status} ${errText}`);
+      throw new Error(`Failed: ${res.status}`);
     }
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) {
@@ -61,13 +61,15 @@ async function loadUsers() {
 
     for (const u of data) {
       const tr = document.createElement("tr");
+      // Handle is_active field gracefully - it might not exist in older databases
+      const isActive = u.is_active !== undefined ? u.is_active : true;
       tr.innerHTML = `
         <td>${u.id}</td>
         <td>${u.email}</td>
         <td>${u.full_name}</td>
         <td><span class="badge ${badgeClass(u.role)}">${u.role}</span></td>
         <td>${u.is_approved ? "✅" : "❌"}</td>
-        <td>${u.is_active ? "✅" : "❌"}</td>
+        <td>${isActive ? "✅" : "❌"}</td>
         <td>${u.is_banned ? "🚫" : "—"}</td>
         <td>${u.is_root_admin ? "👑" : "—"}</td>
         <td class="d-flex flex-wrap gap-1">
