@@ -10,13 +10,17 @@ let userRole = null; // Current user's role
 
 // Fetch leaderboard data from API
 async function fetchLeaderboard() {
-    try:
+    console.log('[Leaderboard] Starting fetchLeaderboard...');
+    try {
         const token = localStorage.getItem('token');
+        console.log('[Leaderboard] Token exists:', !!token);
         if (!token) {
+            console.log('[Leaderboard] No token, redirecting to login');
             window.location.href = '/login.html';
             return;
         }
 
+        console.log('[Leaderboard] Fetching from:', `${API_BASE}/leaderboard`);
         const response = await fetch(`${API_BASE}/leaderboard`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -24,7 +28,11 @@ async function fetchLeaderboard() {
             }
         });
 
+        console.log('[Leaderboard] Response status:', response.status);
+        console.log('[Leaderboard] Response ok:', response.ok);
+
         if (response.status === 401) {
+            console.log('[Leaderboard] Unauthorized, redirecting to login');
             localStorage.removeItem('token');
             window.location.href = '/login.html';
             return;
@@ -32,24 +40,38 @@ async function fetchLeaderboard() {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.log('[Leaderboard] Error data:', errorData);
             const errorMsg = errorData.detail || errorData.error || errorData.message || 'Failed to load leaderboard';
             throw new Error(errorMsg);
         }
 
         const data = await response.json();
-        console.log('Leaderboard response data:', data);
+        console.log('[Leaderboard] Full response data:', data);
+        console.log('[Leaderboard] Response type:', typeof data);
+        console.log('[Leaderboard] Has leaderboard key:', 'leaderboard' in data);
+        
         leaderboardData = data.leaderboard || [];
-        console.log('Leaderboard array length:', leaderboardData.length);
+        console.log('[Leaderboard] Leaderboard data assigned:', leaderboardData);
+        console.log('[Leaderboard] Array length:', leaderboardData.length);
+        if (leaderboardData.length > 0) {
+            console.log('[Leaderboard] First item:', leaderboardData[0]);
+        }
         
         // Get user role from first load or fetch it
         if (!userRole) {
+            console.log('[Leaderboard] Fetching user role...');
             await getUserRole();
+            console.log('[Leaderboard] User role:', userRole);
         }
         
+        console.log('[Leaderboard] Calling updateStats...');
         updateStats(data);
+        console.log('[Leaderboard] Stats updated, calling renderLeaderboard...');
         renderLeaderboard();
+        console.log('[Leaderboard] Leaderboard rendered successfully');
     } catch (error) {
-        console.error('Error fetching leaderboard:', error);
+        console.error('[Leaderboard] ERROR in fetchLeaderboard:', error);
+        console.error('[Leaderboard] Error stack:', error.stack);
         showToast(error.message || 'Failed to load leaderboard', 'error');
         // Show empty state
         const tbody = document.getElementById('leaderboardBody');
@@ -58,7 +80,8 @@ async function fetchLeaderboard() {
                 <tr>
                     <td colspan="9" class="text-center py-5">
                         <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                        <p class="text-danger">${error.message}</p>
+                        <p class="text-danger">${escapeHtml(error.message)}</p>
+                        <small class="text-muted">Check console for details (F12)</small>
                     </td>
                 </tr>`;
         }
@@ -116,11 +139,19 @@ function updateStats(data) {
 
 // Render leaderboard table
 function renderLeaderboard() {
+    console.log('[Leaderboard] renderLeaderboard called');
     const tbody = document.getElementById('leaderboardBody');
-    if (!tbody) return;
+    console.log('[Leaderboard] tbody element:', tbody);
+    if (!tbody) {
+        console.error('[Leaderboard] ERROR: tbody element not found!');
+        return;
+    }
 
     // Check if data is empty
+    console.log('[Leaderboard] leaderboardData:', leaderboardData);
+    console.log('[Leaderboard] leaderboardData length:', leaderboardData ? leaderboardData.length : 'undefined');
     if (!leaderboardData || leaderboardData.length === 0) {
+        console.log('[Leaderboard] No data, showing empty state');
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center py-5">
@@ -132,6 +163,7 @@ function renderLeaderboard() {
     }
 
     // Filter data
+    console.log('[Leaderboard] Filtering data...');
     let filteredData = leaderboardData.filter(player => {
         // Search filter
         const matchesSearch = player.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,8 +174,10 @@ function renderLeaderboard() {
         
         return matchesSearch && matchesRole;
     });
+    console.log('[Leaderboard] Filtered data length:', filteredData.length);
 
     // Sort data
+    console.log('[Leaderboard] Sorting by:', currentSort, currentOrder);
     filteredData.sort((a, b) => {
         let aVal = a[currentSort];
         let bVal = b[currentSort];
@@ -161,6 +195,7 @@ function renderLeaderboard() {
     });
 
     // Render rows
+    console.log('[Leaderboard] Rendering', filteredData.length, 'rows');
     tbody.innerHTML = '';
     
     if (filteredData.length === 0) {
@@ -176,9 +211,11 @@ function renderLeaderboard() {
     }
 
     filteredData.forEach((player, index) => {
+        console.log('[Leaderboard] Creating row for player:', player.user_name);
         const row = createLeaderboardRow(player, index + 1);
         tbody.appendChild(row);
     });
+    console.log('[Leaderboard] Render complete');
 }
 
 // Create a leaderboard table row
