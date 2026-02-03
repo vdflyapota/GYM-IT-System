@@ -493,6 +493,94 @@ def delete_notification(notification_id):
     
     return jsonify({"detail": "Notification deleted"}), 200
 
+@users_bp.post("/notifications/broadcast")
+def broadcast_notification():
+    """Create notifications for all users (internal endpoint, no auth needed for service-to-service)"""
+    from .models import Notification, User, db
+    
+    data = request.get_json(silent=True) or {}
+    
+    title = data.get("title", "New Notification")
+    member_message = data.get("member_message", "")
+    admin_message = data.get("admin_message", "")
+    notification_type = data.get("type", "info")
+    link = data.get("link")
+    
+    if not member_message and not admin_message:
+        return jsonify({"detail": "Message is required"}), 400
+    
+    try:
+        # Get all users
+        users = User.query.all()
+        
+        notifications_created = 0
+        for user in users:
+            # Choose message based on user role
+            if user.role in ['admin', 'trainer']:
+                message = admin_message or member_message
+            else:
+                message = member_message or admin_message
+            
+            notification = Notification(
+                user_id=user.id,
+                title=title,
+                message=message,
+                type=notification_type,
+                link=link,
+                is_read=False
+            )
+            db.session.add(notification)
+            notifications_created += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            "detail": "Broadcast notification sent",
+            "count": notifications_created
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error broadcasting notification: {str(e)}")
+        return jsonify({"detail": f"Failed to broadcast: {str(e)}"}), 500
+
+def send_broadcast_notification(notification_data):
+    """Helper function to send broadcast notification"""
+    from .models import Notification, User, db
+    
+    title = notification_data.get("title", "New Notification")
+    member_message = notification_data.get("member_message", "")
+    admin_message = notification_data.get("admin_message", "")
+    notification_type = notification_data.get("type", "info")
+    link = notification_data.get("link")
+    
+    try:
+        # Get all users
+        users = User.query.all()
+        
+        for user in users:
+            # Choose message based on user role
+            if user.role in ['admin', 'trainer']:
+                message = admin_message or member_message
+            else:
+                message = member_message or admin_message
+            
+            notification = Notification(
+                user_id=user.id,
+                title=title,
+                message=message,
+                type=notification_type,
+                link=link,
+                is_read=False
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        return True
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error sending broadcast notification: {str(e)}")
+        return False
+
 # ==========================================
 # BLOG ENDPOINTS
 # ==========================================
@@ -599,6 +687,27 @@ def create_blog_post():
     
     db.session.add(post)
     db.session.commit()
+    
+    # Send notifications to all users about new blog post (only if published)
+    if published:
+        try:
+            # Different messages for members vs admins/trainers
+            member_message = f"New blog post: '{title}'. Check it out for the latest updates!"
+            admin_message = f"Blog post '{title}' has been published and is now visible to all users."
+            
+            notification_data = {
+                "title": "New Blog Post Published!",
+                "member_message": member_message,
+                "admin_message": admin_message,
+                "type": "info",
+                "link": f"/blog-post.html?slug={slug}"
+            }
+            
+            # Create broadcast notification
+            send_broadcast_notification(notification_data)
+        except Exception as e:
+            # Don't fail blog creation if notification fails
+            logging.warning(f"Failed to send blog notifications: {str(e)}")
     
     return jsonify({"detail": "Blog post created", "id": post.id, "slug": post.slug}), 201
 

@@ -5,6 +5,7 @@ from .models import db, Tournament, Participant, Bracket
 from .config import Config
 import logging
 import requests
+import os
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
@@ -87,6 +88,39 @@ def create_tournament():
 
         db.session.add(tournament)
         db.session.commit()
+
+        # Send notifications to all users about new tournament
+        try:
+            import requests
+            user_service_url = os.getenv('USER_SERVICE_URL', 'http://user-service:5001')
+            
+            # Get JWT token from current request
+            from flask_jwt_extended import get_jwt
+            current_claims = get_jwt()
+            current_role = current_claims.get('role', 'member')
+            
+            # Send notification request to user service
+            # Different messages for members vs admins/trainers
+            member_message = f"New tournament '{name}' is now open for registration! Join now to compete."
+            admin_message = f"Tournament '{name}' has been created and is ready for participant registration."
+            
+            notification_data = {
+                "title": "New Tournament Available!",
+                "member_message": member_message,
+                "admin_message": admin_message,
+                "type": "info",
+                "link": f"/tournaments.html?tournament_id={tournament.id}"
+            }
+            
+            # Call user service to create notifications for all users
+            requests.post(
+                f"{user_service_url}/api/users/notifications/broadcast",
+                json=notification_data,
+                timeout=5
+            )
+        except Exception as e:
+            # Don't fail tournament creation if notification fails
+            logging.warning(f"Failed to send tournament notifications: {str(e)}")
 
         return jsonify({"tournament": tournament.to_dict(), "message": "Tournament created successfully"}), 201
     except Exception as e:
